@@ -213,6 +213,27 @@ void WorldSystem::restart_game() {
 	// create a new Salmon
 	player_salmon = createSalmon(renderer, { window_width_px/2, window_height_px - 200 });
 	registry.colors.insert(player_salmon, {1, 0.8f, 0.8f});
+
+
+	// create the game walls 
+
+	vec2 wall_size = { 250.f, 3700.f }; 
+	vec2 wall_size2 = { 250.f, 1900.f };
+
+    float rotation = 90.0f;  
+	float no_rotation = 0.0f;
+
+	vec2 top_pos = { window_width_px / 2.f -450, window_height_px / 2.f -275};
+	vec2 bot_pos = { window_width_px / 2.f -450, window_height_px / 2.f +275};
+
+	vec2 left_pos = { window_width_px / 2.f -530, window_height_px / 2.f +225};
+	vec2 right_pos = { window_width_px / 2.f +550, window_height_px / 2.f +225};
+
+    createWall(renderer, top_pos, wall_size, rotation);
+	createWall(renderer, bot_pos, wall_size, rotation);
+
+	createWall(renderer, left_pos, wall_size2, no_rotation);
+	createWall(renderer, right_pos, wall_size2, no_rotation);
 }
 
 // Compute collisions between entities

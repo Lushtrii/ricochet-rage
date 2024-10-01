@@ -134,3 +134,28 @@ Entity createEgg(vec2 pos, vec2 size)
 
 	return entity;
 }
+
+
+// create our wall entity 
+Entity createWall(RenderSystem* renderer, vec2 position, vec2 size, float angle) {
+    auto entity = Entity();
+
+    
+    Mesh& mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
+    registry.meshPtrs.emplace(entity, &mesh);
+
+    // Initialize the wall
+    Motion& motion = registry.motions.emplace(entity);
+    motion.position = position;
+    motion.angle = angle * (M_PI / 180.0f);  
+    motion.scale = size;  
+
+   
+    registry.renderRequests.insert(entity, {
+        TEXTURE_ASSET_ID::WALL,  // wall.png in render_system.hpp/components.hpp
+        EFFECT_ASSET_ID::TEXTURED,  
+        GEOMETRY_BUFFER_ID::SPRITE  
+    });
+
+    return entity;
+}

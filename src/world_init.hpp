@@ -25,3 +25,6 @@ Entity createLine(vec2 position, vec2 size);
 
 // a egg
 Entity createEgg(vec2 pos, vec2 size);
+
+// the game walls
+Entity createWall(RenderSystem* renderer, vec2 position, vec2 size, float angle);
