@@ -1,5 +1,7 @@
 // Header
 #include "world_system.hpp"
+#include "common.hpp"
+#include "tiny_ecs_registry.hpp"
 #include "world_init.hpp"
 
 // stlib
@@ -150,21 +152,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update) {
 		}
 	}
 
-	// spawn new eels
-	next_eel_spawn -= elapsed_ms_since_last_update * current_speed;
-	if (registry.deadlys.components.size() <= MAX_NUM_EELS && next_eel_spawn < 0.f) {
-		// reset timer
-		next_eel_spawn = (EEL_SPAWN_DELAY_MS / 2) + uniform_dist(rng) * (EEL_SPAWN_DELAY_MS / 2);
 
-		// create Eel with random initial position
-        createEel(renderer, vec2(50.f + uniform_dist(rng) * (window_width_px - 100.f), 100.f));
-	}
-
-	// spawn fish
-	next_fish_spawn -= elapsed_ms_since_last_update * current_speed;
-	if (registry.eatables.components.size() <= MAX_NUM_FISH && next_fish_spawn < 0.f) {
-		// !!!  TODO A1: create new fish with createFish({0,0}), see eels above
-	}
 
 	// Processing the salmon state
 	assert(registry.screenStates.components.size() <= 1);
@@ -211,9 +199,11 @@ void WorldSystem::restart_game() {
 	registry.list_all_components();
 
 	// create a new Salmon
-	player_salmon = createSalmon(renderer, { window_width_px/2, window_height_px - 200 });
-	registry.colors.insert(player_salmon, {1, 0.8f, 0.8f});
+	player = createPlayer(renderer, { window_width_px/2, window_height_px/2 });
+	registry.colors.insert(player, {1, 0.8f, 0.8f});
 
+    createEnemy(renderer, {window_width_px/2 + 200, window_height_px/2});
+    createProjectile(renderer, {window_width_px/2, window_height_px/2 + 100});
 
 	// create the game walls 
 
@@ -249,27 +239,10 @@ void WorldSystem::handle_collisions() {
 		if (registry.players.has(entity)) {
 			//Player& player = registry.players.get(entity);
 
-			// Checking Player - Deadly collisions
-			if (registry.deadlys.has(entity_other)) {
-				// initiate death unless already dying
-				if (!registry.deathTimers.has(entity)) {
-					// Scream, reset timer, and make the salmon sink
-					registry.deathTimers.emplace(entity);
-					Mix_PlayChannel(-1, salmon_dead_sound, 0);
-
-					// !!! TODO A1: change the salmon's orientation and color on death
-				}
-			}
-			// Checking Player - Eatable collisions
-			else if (registry.eatables.has(entity_other)) {
-				if (!registry.deathTimers.has(entity)) {
-					// chew, count points, and set the LightUp timer
-					registry.remove_all_components_of(entity_other);
-					Mix_PlayChannel(-1, salmon_eat_sound, 0);
-					++points;
-					
-					// !!! TODO A1: create a new struct called LightUp in components.hpp and add an instance to the salmon entity by modifying the ECS registry
-				}
+			// 
+			if (registry.enemies.has(entity_other)) {
+                 auto& motion = registry.motions.get(entity);
+                 motion.velocity = {0.f, 0.f};
 			}
 		}
 	}
@@ -289,7 +262,7 @@ void WorldSystem::on_key(int key, int, int action, int mod) {
 	// key is of 'type' GLFW_KEY_
 	// action can be GLFW_PRESS GLFW_RELEASE GLFW_REPEAT
 	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	Motion& motion = registry.motions.get(player_salmon);
+	Motion& motion = registry.motions.get(player);
 
 	if (action == GLFW_PRESS || action == GLFW_REPEAT) {
 		if (key == GLFW_KEY_W) {
@@ -344,7 +317,7 @@ void WorldSystem::on_mouse_move(vec2 mouse_position) {
 	// xpos and ypos are relative to the top-left of the window, the salmon's
 	// default facing direction is (1, 0)
 	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	Motion& motion = registry.motions.get(player_salmon);
+	Motion& motion = registry.motions.get(player);
 	vec2 direction = motion.position - mouse_position;
 	vec2 direction_normalized = normalize(direction);
 	float angle = atan2(direction_normalized.y, direction_normalized.x);

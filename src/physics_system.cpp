@@ -1,6 +1,7 @@
 // internal
 #include "physics_system.hpp"
 #include "world_init.hpp"
+#include <iostream>
 
 // Returns the local bounding coordinates scaled by the current size of the entity
 vec2 get_bounding_box(const Motion& motion)
@@ -9,21 +10,20 @@ vec2 get_bounding_box(const Motion& motion)
 	return { abs(motion.scale.x), abs(motion.scale.y) };
 }
 
-// This is a SUPER APPROXIMATE check that puts a circle around the bounding boxes and sees
-// if the center point of either object is inside the other's bounding-box-circle. You can
-// surely implement a more accurate detection
+// Checks for collision between 2 bounding boxes
 bool collides(const Motion& motion1, const Motion& motion2)
 {
-	vec2 dp = motion1.position - motion2.position;
-	float dist_squared = dot(dp,dp);
-	const vec2 other_bonding_box = get_bounding_box(motion1) / 2.f;
-	const float other_r_squared = dot(other_bonding_box, other_bonding_box);
-	const vec2 my_bonding_box = get_bounding_box(motion2) / 2.f;
-	const float my_r_squared = dot(my_bonding_box, my_bonding_box);
-	const float r_squared = max(other_r_squared, my_r_squared);
-	if (dist_squared < r_squared)
-		return true;
-	return false;
+    float motion1_left = motion1.position.x - motion1.scale.x/2;
+    float motion1_right = motion1.position.x + motion1.scale.x/2;
+    float motion1_up = motion1.position.y - motion1.scale.y/2;
+    float motion1_down = motion1.position.y + motion1.scale.y/2;
+
+    float motion2_left = motion2.position.x - motion2.scale.x/2;
+    float motion2_right = motion2.position.x + motion2.scale.x/2;
+    float motion2_up = motion2.position.y - motion2.scale.y/2;
+    float motion2_down = motion2.position.y + motion2.scale.y/2;
+
+    return motion1_right >  motion2_left && motion2_up < motion1_down && motion1_left < motion2_right && motion1_up < motion2_down;
 }
 
 void PhysicsSystem::step(float elapsed_ms)
@@ -45,6 +45,7 @@ void PhysicsSystem::step(float elapsed_ms)
 	{
 		Motion& motion_i = motion_container.components[i];
 		Entity entity_i = motion_container.entities[i];
+
 		
 		// note starting j at i+1 to compare all (i,j) pairs only once (and to not compare with itself)
 		for(uint j = i+1; j<motion_container.components.size(); j++)

@@ -11,17 +11,15 @@ struct Player
 };
 
 // anything that is deadly to the player
-struct Deadly
+struct Enemy
 {
 
 };
 
-// anything the player can eat
-struct Eatable
+struct Projectile
 {
 
 };
-
 // All data relevant to the shape and motion of entities
 struct Motion {
 	vec2 position = { 0, 0 };
@@ -111,28 +109,24 @@ struct Mesh
  */
 
 enum class TEXTURE_ASSET_ID {
-	FISH = 0,
-    EEL = FISH + 1,
-    WALL = EEL + 1,   // Add wall texture
-    TEXTURE_COUNT = WALL + 1
+	PLAYER = 0,
+    ENEMY = PLAYER + 1,
+    PROJECTILE = ENEMY + 1,
+    WALL = PROJECTILE + 1,
+	TEXTURE_COUNT = WALL + 1
 };
 const int texture_count = (int)TEXTURE_ASSET_ID::TEXTURE_COUNT;
 
 enum class EFFECT_ASSET_ID {
-	COLOURED = 0,
-	EGG = COLOURED + 1,
-	SALMON = EGG + 1,
-	TEXTURED = SALMON + 1,
+	TEXTURED = 0,
 	WATER = TEXTURED + 1,
 	EFFECT_COUNT = WATER + 1
 };
 const int effect_count = (int)EFFECT_ASSET_ID::EFFECT_COUNT;
 
 enum class GEOMETRY_BUFFER_ID {
-	SALMON = 0,
-	SPRITE = SALMON + 1,
-	EGG = SPRITE + 1,
-	DEBUG_LINE = EGG + 1,
+	SPRITE = 0,
+	DEBUG_LINE = SPRITE + 1,
 	SCREEN_TRIANGLE = DEBUG_LINE + 1,
 	GEOMETRY_COUNT = SCREEN_TRIANGLE + 1
 };
