@@ -47,8 +47,16 @@ Entity createEnemy(RenderSystem *renderer, vec2 position)
     // Setting initial values, scale is negative to make it face the opposite way
     motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, multiplier * ENEMY_BB_HEIGHT});
 
-    // create an empty Eel component to be able to refer to all eels
-    registry.enemies.emplace(entity);
+    // create an empty enemies component
+    Enemy& enemy = registry.enemies.emplace(entity);
+    enemy.health = 10;
+    registry.reloadTimes.emplace(entity);
+    
+    // Add raycasting to the enemy
+    LineOfSight& raycast = registry.lightOfSight.emplace(entity);
+    raycast.ray_distance = 1000;
+    raycast.ray_width = ENEMY_BB_WIDTH;
+
     registry.renderRequests.insert(
         entity,
         {TEXTURE_ASSET_ID::ENEMY,

@@ -218,7 +218,7 @@ void WorldSystem::restart_game()
     player = createPlayer(renderer, {window_width_px / 2 - 150, window_height_px / 2});
     registry.colors.insert(player, {1, 0.8f, 0.8f});
 
-    createEnemy(renderer, {window_width_px / 2 + 200, window_height_px / 2});
+    createEnemy(renderer, {window_width_px / 2 + 300, window_height_px / 2});
 
     // create the game walls
 
@@ -307,6 +307,16 @@ void WorldSystem::handle_collisions(float elapsed_ms)
                 vec2 reflectedVelocity = reflect(projMotion.velocity, normal);
                 projMotion.position -= projMotion.velocity * step_seconds; // move projectile outside of wall collision
                 projMotion.velocity = reflectedVelocity;
+            }
+        } 
+        
+        // collision between enemies and walls
+        else if (registry.enemies.has(entity)) {
+            if (registry.walls.has(entity_other)) {
+                if (registry.motions.has(entity)) {
+                    Motion& enemyMotion = registry.motions.get(entity);
+                    enemyMotion.position -= enemyMotion.velocity * step_seconds;
+                }
             }
         }
     }

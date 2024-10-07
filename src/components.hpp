@@ -9,9 +9,31 @@ struct Player
 {
 };
 
+enum class EnemyState
+{
+    ROAMING = 0,
+    PURSUING = ROAMING + 1,
+    AVOIDWALL = PURSUING + 1
+};
+
 // anything that is deadly to the player
 struct Enemy
 {
+    int health;
+    EnemyState enemyState = EnemyState::ROAMING;
+};
+
+struct LineOfSight
+{
+    float ray_distance = 300;
+    float ray_width = 300;
+};
+
+struct ReloadTime
+{
+    float counter_ms = 3000;
+    float take_aim_ms = 1500;
+    float shoot_rate = 500;
 };
 
 struct Projectile
