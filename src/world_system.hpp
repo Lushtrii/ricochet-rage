@@ -49,7 +49,7 @@ private:
     // OpenGL window handle
     GLFWwindow *window;
 
-    // Number of fish eaten by the salmon, displayed in the window title
+    // Number of points attained by player, displayed in the window title
     unsigned int points;
 
     // Game state
@@ -61,8 +61,8 @@ private:
 
     // music references
     Mix_Music *background_music;
-    Mix_Chunk *salmon_dead_sound;
-    Mix_Chunk *salmon_eat_sound;
+    Mix_Chunk *death_sound;
+    Mix_Chunk *eat_sound;
 
     // C++ random number generator
     std::default_random_engine rng;

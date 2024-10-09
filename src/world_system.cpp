@@ -30,10 +30,10 @@ WorldSystem::~WorldSystem()
     // destroy music components
     if (background_music != nullptr)
         Mix_FreeMusic(background_music);
-    if (salmon_dead_sound != nullptr)
-        Mix_FreeChunk(salmon_dead_sound);
-    if (salmon_eat_sound != nullptr)
-        Mix_FreeChunk(salmon_eat_sound);
+    if (death_sound != nullptr)
+        Mix_FreeChunk(death_sound);
+    if (eat_sound != nullptr)
+        Mix_FreeChunk(eat_sound);
 
     Mix_CloseAudio();
 
@@ -80,7 +80,7 @@ GLFWwindow *WorldSystem::create_window()
     glfwWindowHint(GLFW_RESIZABLE, 0);
 
     // Create the main window (for rendering, keyboard, and mouse input)
-    window = glfwCreateWindow(window_width_px, window_height_px, "Salmon Game Assignment", nullptr, nullptr);
+    window = glfwCreateWindow(window_width_px, window_height_px, "Ricochet Rage", nullptr, nullptr);
     if (window == nullptr)
     {
         fprintf(stderr, "Failed to glfwCreateWindow");
@@ -112,10 +112,10 @@ GLFWwindow *WorldSystem::create_window()
     }
 
     background_music = Mix_LoadMUS(audio_path("music.wav").c_str());
-    salmon_dead_sound = Mix_LoadWAV(audio_path("death_sound.wav").c_str());
-    salmon_eat_sound = Mix_LoadWAV(audio_path("eat_sound.wav").c_str());
+    death_sound = Mix_LoadWAV(audio_path("death_sound.wav").c_str());
+    eat_sound = Mix_LoadWAV(audio_path("eat_sound.wav").c_str());
 
-    if (background_music == nullptr || salmon_dead_sound == nullptr || salmon_eat_sound == nullptr)
+    if (background_music == nullptr || death_sound == nullptr || eat_sound == nullptr)
     {
         fprintf(stderr, "Failed to load sounds\n %s\n %s\n %s\n make sure the data directory is present",
                 audio_path("music.wav").c_str(),
@@ -166,7 +166,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         }
     }
 
-    // Processing the salmon state
+    // Processing the player state
     assert(registry.screenStates.components.size() <= 1);
     ScreenState &screen = registry.screenStates.components[0];
 
@@ -190,7 +190,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
             return true;
         }
     }
-    // reduce window brightness if the salmon is dying
+    // reduce window brightness if the player is dying
     screen.darken_screen_factor = 1 - min_counter_ms / 3000;
 
     return true;
@@ -214,7 +214,7 @@ void WorldSystem::restart_game()
     // Debugging for memory/component leaks
     registry.list_all_components();
 
-    // create a new Salmon
+    // create a new player
     player = createPlayer(renderer, {window_width_px / 2 - 150, window_height_px / 2});
     registry.colors.insert(player, {1, 0.8f, 0.8f});
 
@@ -252,7 +252,7 @@ void WorldSystem::handle_collisions(float elapsed_ms)
         Entity entity = collisionsRegistry.entities[i];
         Entity entity_other = collisionsRegistry.components[i].other;
 
-        // for now, we are only interested in collisions that involve the salmon
+        // for now, we are only interested in collisions that involve the player
         if (registry.players.has(entity))
         {
             // Player& player = registry.players.get(entity);
@@ -409,7 +409,7 @@ void WorldSystem::on_key(int key, int, int action, int mod)
 void WorldSystem::on_mouse_move(vec2 mouse_position)
 {
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // xpos and ypos are relative to the top-left of the window, the salmon's
+    // xpos and ypos are relative to the top-left of the window, the player's
     // default facing direction is (1, 0)
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     Motion &motion = registry.motions.get(player);

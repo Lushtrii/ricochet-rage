@@ -18,7 +18,7 @@ Entity createPlayer(RenderSystem *renderer, vec2 pos)
     float multiplier = 0.5;
     motion.scale = vec2({multiplier * PLAYER_BB_WIDTH, multiplier * PLAYER_BB_HEIGHT});
 
-    // create an empty Salmon component for our character
+    // create an empty player component for our character
     registry.players.emplace(entity);
     registry.renderRequests.insert(
         entity,
@@ -129,7 +129,7 @@ Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, float spe
     motion.velocity = direction * speed;
     motion.scale = vec2(PROJECTILE_BB_WIDTH, PROJECTILE_BB_HEIGHT) * scaleMultiplier;
 
-    // create an empty Salmon component for our character
+    // create an empty player component for our character
     registry.projectiles.emplace(entity);
     registry.renderRequests.insert(
         entity,

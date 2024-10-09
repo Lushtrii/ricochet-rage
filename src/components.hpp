@@ -82,13 +82,13 @@ struct DebugComponent
     // Note, an empty struct has size 1
 };
 
-// A timer that will be associated to dying salmon
+// A timer that will be associated to dying player
 struct DeathTimer
 {
     float counter_ms = 3000;
 };
 
-// Single Vertex Buffer element for non-textured meshes (coloured.vs.glsl & salmon.vs.glsl)
+// Single Vertex Buffer element for non-textured meshes (coloured.vs.glsl & player.vs.glsl)
 struct ColoredVertex
 {
     vec3 position;
