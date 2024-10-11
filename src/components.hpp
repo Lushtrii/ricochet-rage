@@ -19,8 +19,20 @@ enum class EnemyState
 // anything that is deadly to the player
 struct Enemy
 {
-    int health;
     EnemyState enemyState = EnemyState::ROAMING;
+};
+
+struct Health
+{
+    int value = 100;
+
+    void applyDamage(int bounces_remaining)
+    {
+        int damage = 30 - 10 * bounces_remaining;
+        if (damage < 0) damage = 0;
+        value -= damage;
+        if (value < 0) value = 0;
+    }
 };
 
 struct LineOfSight
@@ -39,6 +51,7 @@ struct ReloadTime
 struct Projectile
 {
     int bounces_remaining = 2;
+    int is_player_projectile = true;
 };
 
 struct Wall

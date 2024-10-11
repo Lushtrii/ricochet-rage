@@ -26,6 +26,7 @@ public:
     ComponentContainer<Wall> walls;
     ComponentContainer<ReloadTime> reloadTimes;
     ComponentContainer<LineOfSight> lightOfSight;
+    ComponentContainer<Health> healths;
 
     // constructor that adds all containers for looping over them
     // IMPORTANT: Don't forget to add any newly added containers!
@@ -46,6 +47,7 @@ public:
         registry_list.push_back(&walls);
         registry_list.push_back(&reloadTimes);
         registry_list.push_back(&lightOfSight);
+        registry_list.push_back(&healths);
     }
 
     void clear_all_components()

@@ -108,7 +108,7 @@ void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_
 		if (counter.shoot_rate < 0) {
             vec2 angleVector = normalize(enemyMotion.position - playerMotion.position);
             enemyMotion.angle = atan2(angleVector.y, angleVector.x);
-            createProjectile(renderer_arg, enemyMotion.position, enemyMotion.angle);
+            createProjectile(renderer_arg, enemyMotion.position, enemyMotion.angle, false);
 			counter.shoot_rate = shoot_rate;
 		}
 

@@ -9,6 +9,9 @@ Entity createPlayer(RenderSystem *renderer, vec2 pos)
     Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
     registry.meshPtrs.emplace(entity, &mesh);
 
+    // Setting player health
+    Health &health = registry.healths.emplace(entity);
+
     // Setting initial motion values
     Motion &motion = registry.motions.emplace(entity);
     motion.position = pos;
@@ -37,6 +40,9 @@ Entity createEnemy(RenderSystem *renderer, vec2 position)
     Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
     registry.meshPtrs.emplace(entity, &mesh);
 
+    // Setting enemy health
+    Health &health = registry.healths.emplace(entity);
+
     // Initialize the motion
     auto &motion = registry.motions.emplace(entity);
     motion.angle = 0.f;
@@ -49,7 +55,6 @@ Entity createEnemy(RenderSystem *renderer, vec2 position)
 
     // create an empty enemies component
     Enemy& enemy = registry.enemies.emplace(entity);
-    enemy.health = 10;
     registry.reloadTimes.emplace(entity);
     
     // Add raycasting to the enemy
@@ -110,7 +115,7 @@ Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle)
 }
 
 // create a projectile
-Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, float speed)
+Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_player_projectile, float speed)
 {
     const float scaleMultiplier = 0.5;
 
@@ -130,7 +135,9 @@ Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, float spe
     motion.scale = vec2(PROJECTILE_BB_WIDTH, PROJECTILE_BB_HEIGHT) * scaleMultiplier;
 
     // create an empty player component for our character
-    registry.projectiles.emplace(entity);
+    Projectile &projectile = registry.projectiles.emplace(entity);
+    projectile.is_player_projectile = is_player_projectile;
+
     registry.renderRequests.insert(
         entity,
         {TEXTURE_ASSET_ID::PROJECTILE, // TEXTURE_COUNT indicates that no texture is needed

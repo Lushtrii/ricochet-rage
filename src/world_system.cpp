@@ -10,12 +10,6 @@
 
 #include "physics_system.hpp"
 
-// Game configuration
-const size_t MAX_NUM_EELS = 15;
-const size_t MAX_NUM_FISH = 5;
-const size_t EEL_SPAWN_DELAY_MS = 2000 * 3;
-const size_t FISH_SPAWN_DELAY_MS = 5000 * 3;
-
 // create the underwater world
 WorldSystem::WorldSystem()
     : points(0), next_eel_spawn(0.f), next_fish_spawn(0.f)
@@ -239,6 +233,28 @@ void WorldSystem::restart_game()
     createWall(renderer, vec2(window_width_px / 2.f, window_height_px / 2.f), vec2(100, 100), 0);
 }
 
+void WorldSystem::projectile_hit_character(Entity laser, Entity character)
+{
+    Health &health = registry.healths.get(character);
+    Projectile &projectile = registry.projectiles.get(laser);
+    health.applyDamage(projectile.bounces_remaining);    
+
+    if (health.value == 0) {
+        if (registry.players.has(character)) {
+            // If player dies, respawn and reset game state
+            int w, h;
+            glfwGetWindowSize(window, &w, &h);
+            restart_game();
+        } else {
+            // If enemy dies, remove all components of the enemy
+            registry.remove_all_components_of(character);
+        }
+    }
+    
+    // Remove the projectile
+    registry.remove_all_components_of(laser);
+}
+
 // Compute collisions between entities
 void WorldSystem::handle_collisions(float elapsed_ms)
 {
@@ -255,13 +271,15 @@ void WorldSystem::handle_collisions(float elapsed_ms)
         // for now, we are only interested in collisions that involve the player
         if (registry.players.has(entity))
         {
-            // Player& player = registry.players.get(entity);
-
-            //
             if (registry.enemies.has(entity_other) || registry.walls.has(entity_other))
             {
                 Motion &playerMotion = registry.motions.get(entity);
                 playerMotion.position -= playerMotion.velocity * step_seconds;
+            }
+
+            if (registry.projectiles.has(entity_other) && !registry.projectiles.get(entity_other).is_player_projectile)
+            {
+                projectile_hit_character(entity_other, entity);
             }
         }
 
@@ -318,6 +336,10 @@ void WorldSystem::handle_collisions(float elapsed_ms)
                     enemyMotion.position -= enemyMotion.velocity * step_seconds;
                 }
             }
+
+            if (registry.projectiles.has(entity_other) && registry.projectiles.get(entity_other).is_player_projectile) {
+                projectile_hit_character(entity_other, entity);
+            }
         }
     }
 
@@ -344,7 +366,7 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     // firing player projectiles
     if (action == GLFW_PRESS && key == GLFW_KEY_E)
     {
-        createProjectile(renderer, motion.position, motion.angle);
+        createProjectile(renderer, motion.position, motion.angle, true);
     }
 
     // player movement
@@ -379,7 +401,6 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     {
         int w, h;
         glfwGetWindowSize(window, &w, &h);
-
         restart_game();
     }
 

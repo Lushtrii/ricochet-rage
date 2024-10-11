@@ -27,4 +27,4 @@ Entity createLine(vec2 position, vec2 size);
 // the game walls
 Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle);
 
-Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, float speed = 500);
+Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_player_projectile, float speed = 500);
