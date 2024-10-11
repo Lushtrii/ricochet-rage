@@ -27,6 +27,7 @@ private:
 	const float take_aim_ms = 1500;
 	const float shoot_rate = 500;
     const float obstacleForce = 120.0f;
+    const float minDistanceToPlayer = 100.0f; 
 
     // C++ random number generator
     std::default_random_engine rng;

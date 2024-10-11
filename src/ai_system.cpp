@@ -26,7 +26,7 @@ void AISystem::step(float elapsed_ms)
 		if (enemyState == EnemyState::ROAMING) {
 			if (registry.motions.has(enemy)) {
 				Motion& motion = registry.motions.get(enemy);
-				motion.velocity = vec2((uniform_dist(rng) - 0.5f)* 10.0f, (uniform_dist(rng) - 0.5f) * 10.0f);
+				motion.velocity = vec2((uniform_dist(rng) - 0.5f)* 15.0f, (uniform_dist(rng) - 0.5f) * 15.0f);
 				if (length(playerMotion.position - motion.position) < aggroDistance) {
 					enemyState = EnemyState::PURSUING;
 				}
@@ -72,7 +72,13 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 	std::vector<vec2> directions = {vec2(0, 1), vec2(0, -1), vec2(1, 0), vec2(-1, 0), normalize(vec2(-1, 1)), normalize(vec2(1,1)), normalize(vec2(-1,-1)), normalize(vec2(1,-1))};
 
 	Motion &enemyMotion = registry.motions.get(enemy);
-	vec2 angleVector = -normalize(enemyMotion.position - playerMotion.position);
+	vec2 enemyPlayerDelta = enemyMotion.position - playerMotion.position;
+	// Stop enemy from colliding with player
+	if (length(enemyPlayerDelta) < minDistanceToPlayer) {
+		enemyMotion.velocity = vec2(0.0f, 0.0f);
+		return;
+	}
+	vec2 angleVector = -normalize(enemyPlayerDelta);
 	std::vector<float> interestVector;
 	for (auto &direction: directions) {
 		interestVector.push_back(direction.x * angleVector.x + direction.y * angleVector.y);
@@ -96,6 +102,7 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 	enemyMotion.velocity = normalize(sumVelocity) * enemySpeed;
 }
 
+// Stops and shoots at the enemy at a certain rate
 void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_ms, Motion &playerMotion)
 {
     if (registry.motions.has(enemy))
@@ -120,7 +127,7 @@ void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_
     }
 };
 
-// Extremely simple chase that goes to the players direction, does the Roomba thing when approaching a wall
+// DEPRECATED: Extremely simple chase that goes to the players direction, does the Roomba thing when approaching a wall
 void AISystem::simple_chase(float elapsed_ms, Motion &playersMotion)
 {
 	(float)elapsed_ms;
@@ -131,6 +138,7 @@ void AISystem::simple_chase(float elapsed_ms, Motion &playersMotion)
 	}
 }
 
+// DEPRECATED: Extremely simple chase that goes to the players direction
 void AISystem::simple_chase_enemy(Entity &enemy, Motion &playersMotion)
 {
 	if (registry.motions.has(enemy))
