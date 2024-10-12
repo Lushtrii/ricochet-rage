@@ -55,7 +55,6 @@ void AISystem::step(float elapsed_ms)
 					Motion& wallMotion = registry.motions.get(wall);
 					// If in collision course with the wall, go around it
 					vec2 wallEnemyDelta = enemyMotion.position - wallMotion.position;
-					vec2 vectorToPlayer = -normalize(wallEnemyDelta);
 					if (length(abs(wallEnemyDelta)) > distanceToWalls) {
 						printf("Distance to wall: %f %f\n", length(abs(wallEnemyDelta)), distanceToWalls);
 						enemyState = EnemyState::PURSUING;
@@ -130,7 +129,7 @@ void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_
 // DEPRECATED: Extremely simple chase that goes to the players direction, does the Roomba thing when approaching a wall
 void AISystem::simple_chase(float elapsed_ms, Motion &playersMotion)
 {
-	(float)elapsed_ms;
+	elapsed_ms += 0.f; // to hide errors
 	for (uint i = 0; i < registry.enemies.size(); i++)
 	{
 		Entity &curr_entity = registry.enemies.entities[i];

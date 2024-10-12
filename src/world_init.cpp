@@ -10,7 +10,7 @@ Entity createPlayer(RenderSystem *renderer, vec2 pos)
     registry.meshPtrs.emplace(entity, &mesh);
 
     // Setting player health
-    Health &health = registry.healths.emplace(entity);
+    registry.healths.emplace(entity);
 
     // Setting initial motion values
     Motion &motion = registry.motions.emplace(entity);
@@ -42,7 +42,7 @@ Entity createEnemy(RenderSystem *renderer, vec2 position)
     registry.meshPtrs.emplace(entity, &mesh);
 
     // Setting enemy health
-    Health &health = registry.healths.emplace(entity);
+    registry.healths.emplace(entity);
 
     // Initialize the motion
     auto &motion = registry.motions.emplace(entity);
@@ -55,7 +55,7 @@ Entity createEnemy(RenderSystem *renderer, vec2 position)
     motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, multiplier * ENEMY_BB_HEIGHT});
 
     // create an empty enemies component
-    Enemy& enemy = registry.enemies.emplace(entity);
+    registry.enemies.emplace(entity);
     registry.reloadTimes.emplace(entity);
     
     // Add raycasting to the enemy

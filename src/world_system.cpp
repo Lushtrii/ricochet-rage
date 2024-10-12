@@ -12,8 +12,7 @@
 #include "physics_system.hpp"
 
 // create the underwater world
-WorldSystem::WorldSystem()
-    : points(0), next_eel_spawn(0.f), next_fish_spawn(0.f)
+WorldSystem::WorldSystem() : points(0)
 {
     // Seeding rng with random device
     rng = std::default_random_engine(std::random_device()());
@@ -253,7 +252,7 @@ void WorldSystem::projectile_hit_character(Entity laser, Entity character)
 // Compute collisions between entities
 void WorldSystem::handle_collisions(float elapsed_ms)
 {
-    elapsed_ms; // to hide errors
+    elapsed_ms += 0.f; // to hide errors
     // Loop over all collisions detected by the physics system
     auto &collisionsRegistry = registry.collisions;
     for (uint i = 0; i < collisionsRegistry.components.size(); i++)
@@ -356,12 +355,6 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     const float playerSpeed = 100.f;
     Motion &motion = registry.motions.get(player);
-
-    // firing player projectiles
-    if (action == GLFW_PRESS && key == GLFW_KEY_E)
-    {
-        createProjectile(renderer, motion.position, motion.angle, true);
-    }
 
     // player dashing 
     if (action == GLFW_PRESS && key == GLFW_KEY_SPACE) {
