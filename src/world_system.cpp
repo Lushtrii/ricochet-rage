@@ -18,11 +18,12 @@ WorldSystem::WorldSystem() : points(0)
     rng = std::default_random_engine(std::random_device()());
 }
 
-WorldSystem::~WorldSystem() {
-	
-	// destroy music components
-	if (background_music != nullptr)
-		Mix_FreeMusic(background_music);
+WorldSystem::~WorldSystem()
+{
+
+    // destroy music components
+    if (background_music != nullptr)
+        Mix_FreeMusic(background_music);
 
     Mix_CloseAudio();
 
@@ -85,7 +86,7 @@ GLFWwindow *WorldSystem::create_window()
     auto cursor_pos_redirect = [](GLFWwindow *wnd, double _0, double _1)
     { ((WorldSystem *)glfwGetWindowUserPointer(wnd))->on_mouse_move({_0, _1}); };
     auto click_callback = [](GLFWwindow *wnd, int button, int action, int mods)
-    { ((WorldSystem *)glfwGetWindowUserPointer(wnd))->on_mouse_click(button, action, mods);};
+    { ((WorldSystem *)glfwGetWindowUserPointer(wnd))->on_mouse_click(button, action, mods); };
     glfwSetKeyCallback(window, key_redirect);
     glfwSetCursorPosCallback(window, cursor_pos_redirect);
     glfwSetMouseButtonCallback(window, click_callback);
@@ -103,14 +104,14 @@ GLFWwindow *WorldSystem::create_window()
         return nullptr;
     }
 
+    background_music = Mix_LoadMUS(audio_path("backgroundmusic.wav").c_str());
 
-	background_music = Mix_LoadMUS(audio_path("backgroundmusic.wav").c_str());
-
-	if (background_music == nullptr) {
-		fprintf(stderr, "Failed to load sounds\n %s make sure the data directory is present",
-			audio_path("backgroundmusic.wav").c_str());
-		return nullptr;
-	}
+    if (background_music == nullptr)
+    {
+        fprintf(stderr, "Failed to load sounds\n %s make sure the data directory is present",
+                audio_path("backgroundmusic.wav").c_str());
+        return nullptr;
+    }
 
     return window;
 }
@@ -205,6 +206,7 @@ void WorldSystem::restart_game()
     // create a new player
     player = createPlayer(renderer, {window_width_px / 2 - 150, window_height_px / 2});
     registry.colors.insert(player, {1, 0.8f, 0.8f});
+    update_player_move_dir();
 
     createEnemy(renderer, {window_width_px / 2 + 300, window_height_px / 2});
 
@@ -231,20 +233,24 @@ void WorldSystem::projectile_hit_character(Entity laser, Entity character)
 {
     Health &health = registry.healths.get(character);
     Projectile &projectile = registry.projectiles.get(laser);
-    health.applyDamage(projectile.bounces_remaining);    
+    health.applyDamage(projectile.bounces_remaining);
 
-    if (health.value == 0) {
-        if (registry.players.has(character)) {
+    if (health.value == 0)
+    {
+        if (registry.players.has(character))
+        {
             // If player dies, respawn and reset game state
             int w, h;
             glfwGetWindowSize(window, &w, &h);
             restart_game();
-        } else {
+        }
+        else
+        {
             // If enemy dies, remove all components of the enemy
             registry.remove_all_components_of(character);
         }
     }
-    
+
     // Remove the projectile
     registry.remove_all_components_of(laser);
 }
@@ -319,18 +325,22 @@ void WorldSystem::handle_collisions(float elapsed_ms)
                 projMotion.position -= projMotion.last_physic_move; // move projectile outside of wall collision
                 projMotion.velocity = reflectedVelocity;
             }
-        } 
-        
+        }
+
         // collision between enemies and walls
-        else if (registry.enemies.has(entity)) {
-            if (registry.walls.has(entity_other)) {
-                if (registry.motions.has(entity)) {
-                    Motion& enemyMotion = registry.motions.get(entity);
+        else if (registry.enemies.has(entity))
+        {
+            if (registry.walls.has(entity_other))
+            {
+                if (registry.motions.has(entity))
+                {
+                    Motion &enemyMotion = registry.motions.get(entity);
                     enemyMotion.position -= enemyMotion.last_physic_move;
                 }
             }
 
-            if (registry.projectiles.has(entity_other) && registry.projectiles.get(entity_other).is_player_projectile) {
+            if (registry.projectiles.has(entity_other) && registry.projectiles.get(entity_other).is_player_projectile)
+            {
                 projectile_hit_character(entity_other, entity);
             }
         }
@@ -346,6 +356,13 @@ bool WorldSystem::is_over() const
     return bool(glfwWindowShouldClose(window));
 }
 
+void WorldSystem::update_player_move_dir()
+{
+    const float player_speed = 100.f;
+    Motion &motion = registry.motions.get(player);
+    motion.velocity = length(move_direction) >= 1 ? normalize(move_direction) * player_speed : vec2(0, 0);
+}
+
 // On key callback
 void WorldSystem::on_key(int key, int, int action, int mod)
 {
@@ -353,13 +370,14 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     // key is of 'type' GLFW_KEY_
     // action can be GLFW_PRESS GLFW_RELEASE GLFW_REPEAT
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    const float playerSpeed = 100.f;
     Motion &motion = registry.motions.get(player);
 
-    // player dashing 
-    if (action == GLFW_PRESS && key == GLFW_KEY_SPACE) {
-        Dash& player_dash = registry.dashes.get(player);
-        if (player_dash.charges > 0) {
+    // player dashing
+    if (action == GLFW_PRESS && key == GLFW_KEY_SPACE)
+    {
+        Dash &player_dash = registry.dashes.get(player);
+        if (player_dash.charges > 0)
+        {
             player_dash.charges--;
             player_dash.recharge_timer = player_dash.recharge_cooldown;
             player_dash.remaining_dash_time = player_dash.max_dash_time;
@@ -368,24 +386,29 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     }
 
     // player movement
-    if (key == GLFW_KEY_W)
+    if (action != GLFW_REPEAT)
     {
-        motion.velocity.y = (action == GLFW_PRESS || action == GLFW_REPEAT) ? -playerSpeed : 0;
-    }
-    else if (key == GLFW_KEY_S)
-    {
-        motion.velocity.y = (action == GLFW_PRESS || action == GLFW_REPEAT) ? playerSpeed : 0;
-    }
-    else if (key == GLFW_KEY_A)
-    {
-        motion.velocity.x = (action == GLFW_PRESS || action == GLFW_REPEAT) ? -playerSpeed : 0;
-    }
-    else if (key == GLFW_KEY_D)
-    {
-        motion.velocity.x = (action == GLFW_PRESS || action == GLFW_REPEAT) ? playerSpeed : 0;
-    }
-    if (length(motion.velocity) >= 1) {
-        motion.last_move_direction = normalize(motion.velocity);
+        if (key == GLFW_KEY_W)
+        {
+            move_direction.y += action == GLFW_PRESS ? -1 : 1;
+        }
+        else if (key == GLFW_KEY_S)
+        {
+            move_direction.y += action == GLFW_PRESS ? 1 : -1;
+        }
+        else if (key == GLFW_KEY_A)
+        {
+            move_direction.x += action == GLFW_PRESS ? -1 : 1;
+        }
+        else if (key == GLFW_KEY_D)
+        {
+            move_direction.x += action == GLFW_PRESS ? 1 : -1;
+        }
+        if (length(move_direction) >= 1)
+        {
+            motion.last_move_direction = normalize(move_direction);
+        }
+        update_player_move_dir();
     }
 
     // Exiting game on Esc
@@ -438,10 +461,12 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
     motion.angle = angle;
 }
 
-void WorldSystem::on_mouse_click(int button, int action, int mods) {
+void WorldSystem::on_mouse_click(int button, int action, int mods)
+{
+    mods; // to hide errors
     Motion &motion = registry.motions.get(player);
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    {
         createProjectile(renderer, motion.position, motion.angle, true);
     }
-
 }

@@ -39,6 +39,7 @@ public:
     bool is_over() const;
 
 private:
+    void update_player_move_dir();
     // Input callback functions
     void on_key(int key, int, int action, int mod);
     void on_mouse_move(vec2 pos);
@@ -56,13 +57,15 @@ private:
     // Number of points attained by player, displayed in the window title
     unsigned int points;
 
-	// Game state
-	RenderSystem* renderer;
-	float current_speed;
-	Entity player;
+    // Game state
+    RenderSystem *renderer;
+    float current_speed;
+    Entity player;
 
-	// music references
-	Mix_Music* background_music;
+    vec2 move_direction = vec2(0, 0);
+
+    // music references
+    Mix_Music *background_music;
 
     // C++ random number generator
     std::default_random_engine rng;

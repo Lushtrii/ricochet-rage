@@ -57,9 +57,9 @@ Entity createEnemy(RenderSystem *renderer, vec2 position)
     // create an empty enemies component
     registry.enemies.emplace(entity);
     registry.reloadTimes.emplace(entity);
-    
+
     // Add raycasting to the enemy
-    LineOfSight& raycast = registry.lightOfSight.emplace(entity);
+    LineOfSight &raycast = registry.lightOfSight.emplace(entity);
     raycast.ray_distance = 1000;
     raycast.ray_width = ENEMY_BB_WIDTH;
 
