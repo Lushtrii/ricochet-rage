@@ -375,27 +375,24 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     }
 
     // player movement
-    if (action != GLFW_REPEAT)
+    if (key == GLFW_KEY_W)
     {
-        if (key == GLFW_KEY_W)
-        {
-            motion.velocity.y += action == GLFW_PRESS ? -playerSpeed : playerSpeed;
-        }
-        else if (key == GLFW_KEY_S)
-        {
-            motion.velocity.y += action == GLFW_PRESS ? playerSpeed : -playerSpeed;
-        }
-        else if (key == GLFW_KEY_A)
-        {
-            motion.velocity.x += action == GLFW_PRESS ? -playerSpeed : playerSpeed;
-        }
-        else if (key == GLFW_KEY_D)
-        {
-            motion.velocity.x += action == GLFW_PRESS ? playerSpeed : -playerSpeed;
-        }
-        if (length(motion.velocity) >= 1) {
-            motion.last_move_direction = normalize(motion.velocity);
-        }
+        motion.velocity.y = (action == GLFW_PRESS || action == GLFW_REPEAT) ? -playerSpeed : 0;
+    }
+    else if (key == GLFW_KEY_S)
+    {
+        motion.velocity.y = (action == GLFW_PRESS || action == GLFW_REPEAT) ? playerSpeed : 0;
+    }
+    else if (key == GLFW_KEY_A)
+    {
+        motion.velocity.x = (action == GLFW_PRESS || action == GLFW_REPEAT) ? -playerSpeed : 0;
+    }
+    else if (key == GLFW_KEY_D)
+    {
+        motion.velocity.x = (action == GLFW_PRESS || action == GLFW_REPEAT) ? playerSpeed : 0;
+    }
+    if (length(motion.velocity) >= 1) {
+        motion.last_move_direction = normalize(motion.velocity);
     }
 
     // Exiting game on Esc
