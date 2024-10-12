@@ -5,6 +5,7 @@
 #include "world_init.hpp"
 
 // stlib
+#include <GLFW/glfw3.h>
 #include <cassert>
 #include <sstream>
 
@@ -84,8 +85,11 @@ GLFWwindow *WorldSystem::create_window()
     { ((WorldSystem *)glfwGetWindowUserPointer(wnd))->on_key(_0, _1, _2, _3); };
     auto cursor_pos_redirect = [](GLFWwindow *wnd, double _0, double _1)
     { ((WorldSystem *)glfwGetWindowUserPointer(wnd))->on_mouse_move({_0, _1}); };
+    auto click_callback = [](GLFWwindow *wnd, int button, int action, int mods)
+    { ((WorldSystem *)glfwGetWindowUserPointer(wnd))->on_mouse_click(button, action, mods);};
     glfwSetKeyCallback(window, key_redirect);
     glfwSetCursorPosCallback(window, cursor_pos_redirect);
+    glfwSetMouseButtonCallback(window, click_callback);
 
     //////////////////////////////////////
     // Loading music and sounds with SDL
@@ -99,6 +103,7 @@ GLFWwindow *WorldSystem::create_window()
         fprintf(stderr, "Failed to open audio device");
         return nullptr;
     }
+
 
 	background_music = Mix_LoadMUS(audio_path("backgroundmusic.wav").c_str());
 
@@ -353,12 +358,6 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     const float playerSpeed = 100.f;
     Motion &motion = registry.motions.get(player);
 
-    // firing player projectiles
-    if (action == GLFW_PRESS && key == GLFW_KEY_E)
-    {
-        createProjectile(renderer, motion.position, motion.angle, true);
-    }
-
     // player movement
     if (action != GLFW_REPEAT)
     {
@@ -428,4 +427,12 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
     vec2 direction_normalized = normalize(direction);
     float angle = atan2(direction_normalized.y, direction_normalized.x);
     motion.angle = angle;
+}
+
+void WorldSystem::on_mouse_click(int button, int action, int mods) {
+    Motion &motion = registry.motions.get(player);
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        createProjectile(renderer, motion.position, motion.angle, true);
+    }
+
 }

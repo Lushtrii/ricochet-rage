@@ -42,6 +42,7 @@ private:
     // Input callback functions
     void on_key(int key, int, int action, int mod);
     void on_mouse_move(vec2 pos);
+    void on_mouse_click(int button, int action, int mods);
 
     // Helper functions
     void projectile_hit_character(Entity laser, Entity character);
