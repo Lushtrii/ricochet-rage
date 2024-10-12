@@ -23,6 +23,7 @@ Entity createPlayer(RenderSystem *renderer, vec2 pos)
 
     // create an empty player component for our character
     registry.players.emplace(entity);
+    registry.dashes.emplace(entity);
     registry.renderRequests.insert(
         entity,
         {TEXTURE_ASSET_ID::PLAYER, // TEXTURE_COUNT indicates that no texture is needed

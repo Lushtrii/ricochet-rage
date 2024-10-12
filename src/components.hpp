@@ -57,6 +57,21 @@ struct Projectile
 struct Wall
 {
 };
+
+struct Dash {
+    // const
+    float intial_velocity = 2500;
+    float max_dash_time = 0.3f;
+    float recharge_cooldown = 5;
+    float max_dash_charges = 2;
+
+    // varying
+    float recharge_timer = 0;
+    float charges = max_dash_charges;
+    float remaining_dash_time = 0;
+    vec2 dash_direction = vec2(0,1);
+};
+
 // All data relevant to the shape and motion of entities
 struct Motion
 {
@@ -64,6 +79,8 @@ struct Motion
     float angle = 0;
     vec2 velocity = {0, 0};
     vec2 scale = {10, 10};
+    vec2 last_physic_move = vec2(0,0);
+    vec2 last_move_direction = vec2(0,1);
 };
 
 // Stucture to store collision information

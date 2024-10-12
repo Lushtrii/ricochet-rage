@@ -253,8 +253,7 @@ void WorldSystem::projectile_hit_character(Entity laser, Entity character)
 // Compute collisions between entities
 void WorldSystem::handle_collisions(float elapsed_ms)
 {
-    float step_seconds = elapsed_ms / 1000.f;
-
+    elapsed_ms; // to hide errors
     // Loop over all collisions detected by the physics system
     auto &collisionsRegistry = registry.collisions;
     for (uint i = 0; i < collisionsRegistry.components.size(); i++)
@@ -269,7 +268,7 @@ void WorldSystem::handle_collisions(float elapsed_ms)
             if (registry.enemies.has(entity_other) || registry.walls.has(entity_other))
             {
                 Motion &playerMotion = registry.motions.get(entity);
-                playerMotion.position -= playerMotion.velocity * step_seconds;
+                playerMotion.position -= playerMotion.last_physic_move;
             }
 
             if (registry.projectiles.has(entity_other) && !registry.projectiles.get(entity_other).is_player_projectile)
@@ -318,7 +317,7 @@ void WorldSystem::handle_collisions(float elapsed_ms)
                 }
 
                 vec2 reflectedVelocity = reflect(projMotion.velocity, normal);
-                projMotion.position -= projMotion.velocity * step_seconds; // move projectile outside of wall collision
+                projMotion.position -= projMotion.last_physic_move; // move projectile outside of wall collision
                 projMotion.velocity = reflectedVelocity;
             }
         } 
@@ -328,7 +327,7 @@ void WorldSystem::handle_collisions(float elapsed_ms)
             if (registry.walls.has(entity_other)) {
                 if (registry.motions.has(entity)) {
                     Motion& enemyMotion = registry.motions.get(entity);
-                    enemyMotion.position -= enemyMotion.velocity * step_seconds;
+                    enemyMotion.position -= enemyMotion.last_physic_move;
                 }
             }
 
@@ -358,6 +357,23 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     const float playerSpeed = 100.f;
     Motion &motion = registry.motions.get(player);
 
+    // firing player projectiles
+    if (action == GLFW_PRESS && key == GLFW_KEY_E)
+    {
+        createProjectile(renderer, motion.position, motion.angle, true);
+    }
+
+    // player dashing 
+    if (action == GLFW_PRESS && key == GLFW_KEY_SPACE) {
+        Dash& player_dash = registry.dashes.get(player);
+        if (player_dash.charges > 0) {
+            player_dash.charges--;
+            player_dash.recharge_timer = player_dash.recharge_cooldown;
+            player_dash.remaining_dash_time = player_dash.max_dash_time;
+            player_dash.dash_direction = motion.last_move_direction;
+        }
+    }
+
     // player movement
     if (action != GLFW_REPEAT)
     {
@@ -376,6 +392,9 @@ void WorldSystem::on_key(int key, int, int action, int mod)
         else if (key == GLFW_KEY_D)
         {
             motion.velocity.x += action == GLFW_PRESS ? playerSpeed : -playerSpeed;
+        }
+        if (length(motion.velocity) >= 1) {
+            motion.last_move_direction = normalize(motion.velocity);
         }
     }
 

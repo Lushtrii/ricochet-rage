@@ -36,8 +36,29 @@ void PhysicsSystem::step(float elapsed_ms)
 	for(uint i = 0; i< motion_registry.size(); i++)
 	{
 		Motion& motion = motion_registry.components[i];
-		motion.position += motion.velocity * step_seconds;
+		Entity entity = motion_registry.entities[i];
+
+		motion.last_physic_move = vec2(0,0);
+
+		if (registry.dashes.has(entity)) {
+			Dash& dash = registry.dashes.get(entity);
+
+			if (dash.remaining_dash_time > 0) {
+				motion.last_physic_move += dash.dash_direction * dash.remaining_dash_time * dash.intial_velocity * step_seconds;
+				dash.remaining_dash_time -= step_seconds;
+			}
+			if (dash.charges != dash.max_dash_charges) {
+				dash.recharge_timer -= step_seconds;
+				if (dash.recharge_timer <= 0) {
+					dash.charges++;
+				}
+			}
+		}
+
+		motion.last_physic_move += motion.velocity * step_seconds;	
+		motion.position += motion.last_physic_move;
 	}
+
 
 	// Check for collisions between all moving entities
     ComponentContainer<Motion> &motion_container = registry.motions;
