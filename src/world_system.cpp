@@ -18,16 +18,11 @@ WorldSystem::WorldSystem()
     rng = std::default_random_engine(std::random_device()());
 }
 
-WorldSystem::~WorldSystem()
-{
-
-    // destroy music components
-    if (background_music != nullptr)
-        Mix_FreeMusic(background_music);
-    if (death_sound != nullptr)
-        Mix_FreeChunk(death_sound);
-    if (eat_sound != nullptr)
-        Mix_FreeChunk(eat_sound);
+WorldSystem::~WorldSystem() {
+	
+	// destroy music components
+	if (background_music != nullptr)
+		Mix_FreeMusic(background_music);
 
     Mix_CloseAudio();
 
@@ -105,18 +100,13 @@ GLFWwindow *WorldSystem::create_window()
         return nullptr;
     }
 
-    background_music = Mix_LoadMUS(audio_path("music.wav").c_str());
-    death_sound = Mix_LoadWAV(audio_path("death_sound.wav").c_str());
-    eat_sound = Mix_LoadWAV(audio_path("eat_sound.wav").c_str());
+	background_music = Mix_LoadMUS(audio_path("backgroundmusic.wav").c_str());
 
-    if (background_music == nullptr || death_sound == nullptr || eat_sound == nullptr)
-    {
-        fprintf(stderr, "Failed to load sounds\n %s\n %s\n %s\n make sure the data directory is present",
-                audio_path("music.wav").c_str(),
-                audio_path("death_sound.wav").c_str(),
-                audio_path("eat_sound.wav").c_str());
-        return nullptr;
-    }
+	if (background_music == nullptr) {
+		fprintf(stderr, "Failed to load sounds\n %s make sure the data directory is present",
+			audio_path("backgroundmusic.wav").c_str());
+		return nullptr;
+	}
 
     return window;
 }

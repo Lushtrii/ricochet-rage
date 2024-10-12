@@ -57,7 +57,6 @@ struct Projectile
 struct Wall
 {
 };
-
 // All data relevant to the shape and motion of entities
 struct Motion
 {

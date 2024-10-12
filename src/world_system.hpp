@@ -55,17 +55,15 @@ private:
     // Number of points attained by player, displayed in the window title
     unsigned int points;
 
-    // Game state
-    RenderSystem *renderer;
-    float current_speed;
-    float next_eel_spawn;
-    float next_fish_spawn;
-    Entity player;
+	// Game state
+	RenderSystem* renderer;
+	float current_speed;
+	float next_eel_spawn;
+	float next_fish_spawn;
+	Entity player;
 
-    // music references
-    Mix_Music *background_music;
-    Mix_Chunk *death_sound;
-    Mix_Chunk *eat_sound;
+	// music references
+	Mix_Music* background_music;
 
     // C++ random number generator
     std::default_random_engine rng;
