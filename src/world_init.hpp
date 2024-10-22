@@ -15,6 +15,9 @@ const float ENEMY_BB_WIDTH = 0.6f * 165.f;  // 870
 const float PROJECTILE_BB_HEIGHT = 0.6f * 150.f;
 const float PROJECTILE_BB_WIDTH = 0.6f * 75.f;
 
+const float POWERUP_BB_HEIGHT = 100;
+const float POWERUP_BB_WIDTH = 100;
+
 // the player
 Entity createPlayer(RenderSystem *renderer, vec2 pos);
 
@@ -28,3 +31,5 @@ Entity createLine(vec2 position, vec2 size);
 Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle);
 
 Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_player_projectile, float speed = 500);
+
+Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position);

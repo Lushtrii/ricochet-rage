@@ -227,6 +227,10 @@ void WorldSystem::restart_game()
     createWall(renderer, right_pos, vec2(wallThickness, window_height_px), 0);
 
     createWall(renderer, vec2(window_width_px / 2.f, window_height_px / 2.f), vec2(100, 100), 0);
+
+
+    // create power ups
+    createInvincibilityPowerUp(renderer, { window_width_px / 2.f - 100, window_height_px / 2.f - 100});
 }
 
 void WorldSystem::projectile_hit_character(Entity laser, Entity character)

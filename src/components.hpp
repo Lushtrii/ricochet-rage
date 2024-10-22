@@ -58,6 +58,11 @@ struct Wall
 {
 };
 
+struct PowerUp
+{
+    float duration = 5;
+};
+
 struct Dash {
     // const
     float intial_velocity = 2500;
@@ -172,7 +177,8 @@ enum class TEXTURE_ASSET_ID
     PROJECTILE_CHARGED = PROJECTILE + 1,
     PROJECTILE_SUPER_CHARGED = PROJECTILE_CHARGED + 1,
     WALL = PROJECTILE_SUPER_CHARGED + 1,
-    TEXTURE_COUNT = WALL + 1
+    INVINCIBILITY = WALL + 1,
+    TEXTURE_COUNT = INVINCIBILITY + 1
 };
 const int texture_count = (int)TEXTURE_ASSET_ID::TEXTURE_COUNT;
 

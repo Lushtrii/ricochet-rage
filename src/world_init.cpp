@@ -147,3 +147,29 @@ Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_p
 
     return entity;
 }
+
+
+// create invincibility power up
+Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position)
+{
+
+    const float scaleMultiplier = 0.5;
+
+
+    auto entity = Entity();
+
+    Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
+    registry.meshPtrs.emplace(entity, &mesh);
+
+    Motion &motion = registry.motions.emplace(entity);
+    motion.position = position;
+    motion.scale = vec2(POWERUP_BB_WIDTH, POWERUP_BB_HEIGHT) * scaleMultiplier;
+
+    registry.powerUps.emplace(entity);
+
+    registry.renderRequests.insert(entity, {TEXTURE_ASSET_ID::INVINCIBILITY,
+                                            EFFECT_ASSET_ID::TEXTURED,
+                                            GEOMETRY_BUFFER_ID::SPRITE});
+
+    return entity;
+}

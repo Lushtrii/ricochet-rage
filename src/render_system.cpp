@@ -173,7 +173,8 @@ void RenderSystem::draw()
 	glDepthRange(0.00001, 10);
 	//glClearColor(GLfloat(172 / 255), GLfloat(216 / 255), GLfloat(255 / 255), 1.0);
 
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // black space background
+	//glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // black space background
+	glClearColor(0.75f, 0.75f, 0.75f, 1.0f); 
 
 	glClearDepth(10.f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

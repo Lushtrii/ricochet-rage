@@ -36,6 +36,7 @@ class RenderSystem
         textures_path("charged-projectile.png"),
         textures_path("supercharged-projectile.png"),
         textures_path("wall.png"),
+        textures_path("invincibility.png"),
     };
 
     std::array<GLuint, effect_count> effects;

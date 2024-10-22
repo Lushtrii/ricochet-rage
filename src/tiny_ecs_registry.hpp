@@ -28,6 +28,7 @@ public:
     ComponentContainer<LineOfSight> lightOfSight;
     ComponentContainer<Dash> dashes;
     ComponentContainer<Health> healths;
+    ComponentContainer<PowerUp> powerUps;
 
     // constructor that adds all containers for looping over them
     // IMPORTANT: Don't forget to add any newly added containers!
@@ -50,6 +51,7 @@ public:
         registry_list.push_back(&lightOfSight);
         registry_list.push_back(&dashes);
         registry_list.push_back(&healths);
+        registry_list.push_back(&powerUps);
     }
 
     void clear_all_components()
