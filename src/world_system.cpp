@@ -71,6 +71,7 @@ GLFWwindow *WorldSystem::create_window()
 
     // Create the main window (for rendering, keyboard, and mouse input)
     window = glfwCreateWindow(window_width_px, window_height_px, "Ricochet Rage", nullptr, nullptr);
+
     if (window == nullptr)
     {
         fprintf(stderr, "Failed to glfwCreateWindow");
@@ -208,7 +209,8 @@ void WorldSystem::restart_game()
     registry.colors.insert(player, {1, 0.8f, 0.8f});
     update_player_move_dir();
 
-    createEnemy(renderer, {window_width_px / 2 + 300, window_height_px / 2});
+    createMeleeEnemy(renderer, {window_width_px / 2 + 300, window_height_px / 2 - 100});
+    createRangedEnemy(renderer, {window_width_px / 2 + 300, window_height_px / 2});
 
     // create the game walls
 

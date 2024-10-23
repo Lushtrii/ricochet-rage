@@ -1,5 +1,6 @@
 // internal
 #include "physics_system.hpp"
+#include "tiny_ecs_registry.hpp"
 #include "world_init.hpp"
 #include <iostream>
 
@@ -13,15 +14,15 @@ vec2 get_bounding_box(const Motion& motion)
 // Checks for collision between 2 bounding boxes
 bool collides(const Motion& motion1, const Motion& motion2)
 {
-    float motion1_left = motion1.position.x - motion1.scale.x/2;
-    float motion1_right = motion1.position.x + motion1.scale.x/2;
-    float motion1_up = motion1.position.y - motion1.scale.y/2;
-    float motion1_down = motion1.position.y + motion1.scale.y/2;
+    float motion1_left = motion1.position.x - abs(motion1.scale.x/2);
+    float motion1_right = motion1.position.x + abs(motion1.scale.x/2);
+    float motion1_up = motion1.position.y - abs(motion1.scale.y/2);
+    float motion1_down = motion1.position.y + abs(motion1.scale.y/2);
 
-    float motion2_left = motion2.position.x - motion2.scale.x/2;
-    float motion2_right = motion2.position.x + motion2.scale.x/2;
-    float motion2_up = motion2.position.y - motion2.scale.y/2;
-    float motion2_down = motion2.position.y + motion2.scale.y/2;
+    float motion2_left = motion2.position.x - abs(motion2.scale.x/2);
+    float motion2_right = motion2.position.x + abs(motion2.scale.x/2);
+    float motion2_up = motion2.position.y - abs(motion2.scale.y/2);
+    float motion2_down = motion2.position.y + abs(motion2.scale.y/2);
 
     return motion1_right >  motion2_left && motion2_up < motion1_down && motion1_left < motion2_right && motion1_up < motion2_down;
 }

@@ -22,7 +22,8 @@ const float POWERUP_BB_WIDTH = 100;
 Entity createPlayer(RenderSystem *renderer, vec2 pos);
 
 // the prey
-Entity createEnemy(RenderSystem *renderer, vec2 position);
+Entity createMeleeEnemy(RenderSystem *renderer, vec2 position);
+Entity createRangedEnemy(RenderSystem *renderer, vec2 position);
 
 // a red line for debugging purposes
 Entity createLine(vec2 position, vec2 size);

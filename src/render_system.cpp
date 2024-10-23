@@ -1,7 +1,9 @@
 // internal
 #include "render_system.hpp"
 #include <SDL.h>
+#include <cmath>
 
+#include "common.hpp"
 #include "tiny_ecs_registry.hpp"
 
 void RenderSystem::drawTexturedMesh(Entity entity,
@@ -14,11 +16,18 @@ void RenderSystem::drawTexturedMesh(Entity entity,
 
 	Transform transform;
 	transform.translate(motion.position);
-	transform.rotate(motion.angle);
-	transform.scale(motion.scale);
 	
 	assert(registry.renderRequests.has(entity));
 	const RenderRequest &render_request = registry.renderRequests.get(entity);
+
+    if (fabsf(motion.angle) < (M_PI/2) && !(registry.projectiles.has(entity))) {
+        transform.rotate(motion.angle - M_PI);
+        transform.scale(vec2(-motion.scale.x, motion.scale.y));
+    }
+    else {
+        transform.rotate(motion.angle);
+        transform.scale(motion.scale);
+    }
 
 	const GLuint used_effect_enum = (GLuint)render_request.used_effect;
 	assert(used_effect_enum != (GLuint)EFFECT_ASSET_ID::EFFECT_COUNT);

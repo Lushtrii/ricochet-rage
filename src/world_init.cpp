@@ -1,4 +1,5 @@
 #include "world_init.hpp"
+#include "common.hpp"
 #include "tiny_ecs_registry.hpp"
 
 Entity createPlayer(RenderSystem *renderer, vec2 pos)
@@ -18,7 +19,7 @@ Entity createPlayer(RenderSystem *renderer, vec2 pos)
     motion.angle = 0.f;
     motion.velocity = {0.f, 0.f};
     /* motion.scale = mesh.original_size * 300.f; */
-    float multiplier = 0.5;
+    float multiplier = -0.5f;
     motion.scale = vec2({multiplier * PLAYER_BB_WIDTH, multiplier * PLAYER_BB_HEIGHT});
 
     // create an empty player component for our character
@@ -32,8 +33,7 @@ Entity createPlayer(RenderSystem *renderer, vec2 pos)
 
     return entity;
 }
-
-Entity createEnemy(RenderSystem *renderer, vec2 position)
+Entity createMeleeEnemy(RenderSystem *renderer, vec2 position)
 {
     auto entity = Entity();
 
@@ -50,9 +50,9 @@ Entity createEnemy(RenderSystem *renderer, vec2 position)
     motion.velocity = {0.f, 0.f};
     motion.position = position;
 
-    float multiplier = 0.5;
+    float multiplier = 0.5f;
     // Setting initial values, scale is negative to make it face the opposite way
-    motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, multiplier * ENEMY_BB_HEIGHT});
+    motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, -multiplier * ENEMY_BB_HEIGHT});
 
     // create an empty enemies component
     registry.enemies.emplace(entity);
@@ -65,7 +65,46 @@ Entity createEnemy(RenderSystem *renderer, vec2 position)
 
     registry.renderRequests.insert(
         entity,
-        {TEXTURE_ASSET_ID::ENEMY,
+        {TEXTURE_ASSET_ID::MELEE_ENEMY,
+         EFFECT_ASSET_ID::TEXTURED,
+         GEOMETRY_BUFFER_ID::SPRITE});
+
+    return entity;
+}
+
+Entity createRangedEnemy(RenderSystem *renderer, vec2 position)
+{
+    auto entity = Entity();
+
+    // Store a reference to the potentially re-used mesh object (the value is stored in the resource cache)
+    Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
+    registry.meshPtrs.emplace(entity, &mesh);
+
+    // Setting enemy health
+    registry.healths.emplace(entity);
+
+    // Initialize the motion
+    auto &motion = registry.motions.emplace(entity);
+    motion.angle = 0.f;
+    motion.velocity = {0.f, 0.f};
+    motion.position = position;
+
+    float multiplier = 0.5f;
+    // Setting initial values, scale is negative to make it face the opposite way
+    motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, -multiplier * ENEMY_BB_HEIGHT});
+
+    // create an empty enemies component
+    registry.enemies.emplace(entity);
+    registry.reloadTimes.emplace(entity);
+
+    // Add raycasting to the enemy
+    LineOfSight &raycast = registry.lightOfSight.emplace(entity);
+    raycast.ray_distance = 1000;
+    raycast.ray_width = ENEMY_BB_WIDTH;
+
+    registry.renderRequests.insert(
+        entity,
+        {TEXTURE_ASSET_ID::RANGED_ENEMY,
          EFFECT_ASSET_ID::TEXTURED,
          GEOMETRY_BUFFER_ID::SPRITE});
 
