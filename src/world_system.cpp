@@ -131,10 +131,28 @@ void WorldSystem::init(RenderSystem *renderer_arg)
 // Update our game world
 bool WorldSystem::step(float elapsed_ms_since_last_update)
 {
-    // Updating window title with points
-    std::stringstream title_ss;
-    title_ss << "Points: " << points;
-    glfwSetWindowTitle(window, title_ss.str().c_str());
+   
+    static int frames = 0; 
+    static double prevTime = glfwGetTime(); 
+    double currTime = glfwGetTime(); 
+
+    double delta = currTime - prevTime;
+
+    frames++;
+
+    if (delta >= 1.0) {
+        
+        int FPS = frames / delta;
+
+        prevTime = currTime;
+        frames = 0;
+
+        std::stringstream title_ss;
+        title_ss << "Ricochet Rage | FPS: " << FPS;
+        glfwSetWindowTitle(window, title_ss.str().c_str());
+    }
+
+
 
     // Remove debug info from the last step
     while (registry.debugComponents.entities.size() > 0)
@@ -214,21 +232,40 @@ void WorldSystem::restart_game()
 
     // create the game walls
 
-    float wallThickness = 50.f;
+     createWall(renderer, vec2(window_width_px / 2.f, window_height_px / 2.f), vec2(100, 100), 0);
+    createWall(renderer, vec2(window_width_px / 2.f + 100, window_height_px / 2.f), vec2(100, 100), 0);
 
-    vec2 top_pos = {window_width_px / 2.f, wallThickness};
-    vec2 bot_pos = {window_width_px / 2.f, window_height_px - wallThickness};
+    // updated wall
+    //top right corner
+    createWall(renderer, vec2(window_width_px - 50, window_height_px - 675), vec2(50, 50), 0);
 
-    vec2 left_pos = {wallThickness, window_height_px / 2.f};
-    vec2 right_pos = {window_width_px - wallThickness, window_height_px / 2.f};
+    //top left corner
+    createWall(renderer, vec2(window_width_px - 1200, window_height_px - 675), vec2(50, 50), 0);
 
-    createWall(renderer, top_pos, vec2(window_width_px, wallThickness), 0);
-    createWall(renderer, bot_pos, vec2(window_width_px, wallThickness), 0);
+    // bot right corner 
+    createWall(renderer, vec2(window_width_px - 50, window_height_px - 75), vec2(50, 50), 0);
 
-    createWall(renderer, left_pos, vec2(wallThickness, window_height_px), 0);
-    createWall(renderer, right_pos, vec2(wallThickness, window_height_px), 0);
+    // bot left corner 
+    createWall(renderer, vec2(window_width_px - 1200, window_height_px - 75), vec2(50, 50), 0);
+    
 
-    createWall(renderer, vec2(window_width_px / 2.f, window_height_px / 2.f), vec2(100, 100), 0);
+    for (int i = 100; i <= 1150; i += 50) {
+
+    // Top wall
+    createWall(renderer, vec2(window_width_px - i, window_height_px - 675), vec2(50, 50), 0);
+    
+    // Bottom wall
+    createWall(renderer, vec2(window_width_px - i, window_height_px - 75), vec2(50, 50), 0);
+    }
+
+
+    for (int i = 125; i <= 625; i += 50) {
+    // Left wall
+    createWall(renderer, vec2(window_width_px - 1200, window_height_px - i), vec2(50, 50), 0);
+    
+    // Right wall
+    createWall(renderer, vec2(window_width_px - 50, window_height_px - i), vec2(50, 50), 0);
+    }
 
 
     // create power ups
