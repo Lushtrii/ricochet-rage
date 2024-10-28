@@ -11,8 +11,14 @@
 
 #include "physics_system.hpp"
 
+const size_t TOTAL_NUM_ENEMIES = 25;        // total number of enemies in the game level
+const size_t MAX_NUM_ENEMIES = 10;          // maximum number of enemies on the screen
+const size_t ENEMY_SPAWN_DELAY_MS = 4000;   // time between enemy spawns
+
 // create the underwater world
-WorldSystem::WorldSystem() : points(0)
+WorldSystem::WorldSystem() 
+    : points(0)
+    , next_enemy_spawn(0.f)
 {
     // Seeding rng with random device
     rng = std::default_random_engine(std::random_device()());
@@ -174,6 +180,41 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         }
     }
 
+
+    // spawn new enemies
+    next_enemy_spawn -= elapsed_ms_since_last_update * current_speed;
+    if (num_enemies_seen < TOTAL_NUM_ENEMIES && registry.enemies.components.size() <= MAX_NUM_ENEMIES && next_enemy_spawn < 0.f) {
+        num_enemies_seen++;
+        next_enemy_spawn = (ENEMY_SPAWN_DELAY_MS / 2) + uniform_dist(rng) * (ENEMY_SPAWN_DELAY_MS / 2);
+
+        bool is_valid_spawn = false;
+        vec2 spawn_pos;
+
+        while (!is_valid_spawn) {
+            spawn_pos = {
+                150.f + uniform_dist(rng) * (window_width_px - 300.f), 
+                150.f + uniform_dist(rng) * (window_height_px - 300.f)
+            };
+            is_valid_spawn = true;
+
+            for (Entity entity : registry.walls.entities) {
+                Motion &wall_motion = registry.motions.get(entity);
+                if (length(wall_motion.position - spawn_pos) < 100.f) {
+                    is_valid_spawn = false;
+                    break;
+                }
+            }
+        }
+
+        bool spawn_melee = uniform_dist(rng) < 0.5;
+        if (spawn_melee) {
+            createMeleeEnemy(renderer, spawn_pos);
+        } else {
+            createRangedEnemy(renderer, spawn_pos);
+        }
+    }
+
+
     // Processing the player state
     assert(registry.screenStates.components.size() <= 1);
     ScreenState &screen = registry.screenStates.components[0];
@@ -227,12 +268,8 @@ void WorldSystem::restart_game()
     registry.colors.insert(player, {1, 0.8f, 0.8f});
     update_player_move_dir();
 
-    createMeleeEnemy(renderer, {window_width_px / 2 + 300, window_height_px / 2 - 100});
-    createRangedEnemy(renderer, {window_width_px / 2 + 300, window_height_px / 2});
-
     // create the game walls
-
-     createWall(renderer, vec2(window_width_px / 2.f, window_height_px / 2.f), vec2(100, 100), 0);
+    createWall(renderer, vec2(window_width_px / 2.f, window_height_px / 2.f), vec2(100, 100), 0);
     createWall(renderer, vec2(window_width_px / 2.f + 100, window_height_px / 2.f), vec2(100, 100), 0);
 
     // updated wall
@@ -250,21 +287,20 @@ void WorldSystem::restart_game()
     
 
     for (int i = 100; i <= 1150; i += 50) {
-
-    // Top wall
-    createWall(renderer, vec2(window_width_px - i, window_height_px - 675), vec2(50, 50), 0);
-    
-    // Bottom wall
-    createWall(renderer, vec2(window_width_px - i, window_height_px - 75), vec2(50, 50), 0);
+        // Top wall
+        createWall(renderer, vec2(window_width_px - i, window_height_px - 675), vec2(50, 50), 0);
+        
+        // Bottom wall
+        createWall(renderer, vec2(window_width_px - i, window_height_px - 75), vec2(50, 50), 0);
     }
 
 
     for (int i = 125; i <= 625; i += 50) {
-    // Left wall
-    createWall(renderer, vec2(window_width_px - 1200, window_height_px - i), vec2(50, 50), 0);
-    
-    // Right wall
-    createWall(renderer, vec2(window_width_px - 50, window_height_px - i), vec2(50, 50), 0);
+        // Left wall
+        createWall(renderer, vec2(window_width_px - 1200, window_height_px - i), vec2(50, 50), 0);
+        
+        // Right wall
+        createWall(renderer, vec2(window_width_px - 50, window_height_px - i), vec2(50, 50), 0);
     }
 
 

@@ -56,11 +56,14 @@ private:
 
     // Number of points attained by player, displayed in the window title
     unsigned int points;
+    float next_enemy_spawn;
 
     // Game state
     RenderSystem *renderer;
     float current_speed;
     Entity player;
+
+    int num_enemies_seen = 0;
 
     vec2 move_direction = vec2(0, 0);
 
