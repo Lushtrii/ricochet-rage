@@ -30,6 +30,12 @@ WorldSystem::~WorldSystem()
     // destroy music components
     if (background_music != nullptr)
         Mix_FreeMusic(background_music);
+    if (player_death_sound != nullptr)
+		Mix_FreeChunk(player_death_sound);
+	if (enemy_death_sound != nullptr)
+		Mix_FreeChunk(enemy_death_sound);
+    if (laser_shot_sound != nullptr)
+        Mix_FreeChunk(laser_shot_sound);
 
     Mix_CloseAudio();
 
@@ -111,14 +117,19 @@ GLFWwindow *WorldSystem::create_window()
         return nullptr;
     }
 
-    background_music = Mix_LoadMUS(audio_path("backgroundmusic.wav").c_str());
+    background_music = Mix_LoadMUS(audio_path("background-music.wav").c_str());
+    player_death_sound = Mix_LoadWAV(audio_path("player-death-sound.wav").c_str());
+	enemy_death_sound = Mix_LoadWAV(audio_path("enemy-death-sound.wav").c_str());
+    laser_shot_sound = Mix_LoadWAV(audio_path("laser-shot-sound.wav").c_str());
 
-    if (background_music == nullptr)
-    {
-        fprintf(stderr, "Failed to load sounds\n %s make sure the data directory is present",
-                audio_path("backgroundmusic.wav").c_str());
-        return nullptr;
-    }
+	if (background_music == nullptr || player_death_sound == nullptr || enemy_death_sound == nullptr || laser_shot_sound == nullptr) {
+		fprintf(stderr, "Failed to load sounds\n %s\n %s\n %s\n make sure the data directory is present",
+			audio_path("background-music.wav").c_str(),
+			audio_path("player-death-sound.wav").c_str(),
+			audio_path("enemy-death-sound.wav").c_str(),
+            audio_path("laser-shot-sound.wav").c_str());
+		return nullptr;
+	}
 
     return window;
 }
@@ -255,6 +266,9 @@ void WorldSystem::restart_game()
     // Reset the game speed
     current_speed = 1.f;
 
+    // Reset the number of enemies seen
+    num_enemies_seen = 0;
+
     // Remove all entities that we created
     // All that have a motion, we could also iterate over all fish, eels, ... but that would be more cumbersome
     while (registry.motions.entities.size() > 0)
@@ -319,13 +333,13 @@ void WorldSystem::projectile_hit_character(Entity laser, Entity character)
         if (registry.players.has(character))
         {
             // If player dies, respawn and reset game state
-            int w, h;
-            glfwGetWindowSize(window, &w, &h);
-            restart_game();
+            registry.deathTimers.emplace(character);
+			Mix_PlayChannel(-1, player_death_sound, 0);
         }
         else
         {
             // If enemy dies, remove all components of the enemy
+            Mix_PlayChannel(-1, enemy_death_sound, 0);
             registry.remove_all_components_of(character);
         }
     }
@@ -355,7 +369,10 @@ void WorldSystem::handle_collisions(float elapsed_ms)
                 playerMotion.position -= playerMotion.last_physic_move;
             }
 
-            if (registry.projectiles.has(entity_other) && !registry.projectiles.get(entity_other).is_player_projectile)
+            if (
+                registry.projectiles.has(entity_other) && 
+                !registry.projectiles.get(entity_other).is_player_projectile &&
+                !registry.deathTimers.has(entity))
             {
                 projectile_hit_character(entity_other, entity);
             }
@@ -451,43 +468,45 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     Motion &motion = registry.motions.get(player);
 
-    // player dashing
-    if (action == GLFW_PRESS && key == GLFW_KEY_SPACE)
-    {
-        Dash &player_dash = registry.dashes.get(player);
-        if (player_dash.charges > 0)
+    if (!registry.deathTimers.has(player)) {
+        // player dashing
+        if (action == GLFW_PRESS && key == GLFW_KEY_SPACE)
         {
-            player_dash.charges--;
-            player_dash.recharge_timer = player_dash.recharge_cooldown;
-            player_dash.remaining_dash_time = player_dash.max_dash_time;
-            player_dash.dash_direction = motion.last_move_direction;
+            Dash &player_dash = registry.dashes.get(player);
+            if (player_dash.charges > 0)
+            {
+                player_dash.charges--;
+                player_dash.recharge_timer = player_dash.recharge_cooldown;
+                player_dash.remaining_dash_time = player_dash.max_dash_time;
+                player_dash.dash_direction = motion.last_move_direction;
+            }
         }
-    }
 
-    // player movement
-    if (action != GLFW_REPEAT)
-    {
-        if (key == GLFW_KEY_W)
+        // player movement
+        if (action != GLFW_REPEAT)
         {
-            move_direction.y += action == GLFW_PRESS ? -1 : 1;
+            if (key == GLFW_KEY_W)
+            {
+                move_direction.y += action == GLFW_PRESS ? -1 : 1;
+            }
+            else if (key == GLFW_KEY_S)
+            {
+                move_direction.y += action == GLFW_PRESS ? 1 : -1;
+            }
+            else if (key == GLFW_KEY_A)
+            {
+                move_direction.x += action == GLFW_PRESS ? -1 : 1;
+            }
+            else if (key == GLFW_KEY_D)
+            {
+                move_direction.x += action == GLFW_PRESS ? 1 : -1;
+            }
+            if (length(move_direction) >= 1)
+            {
+                motion.last_move_direction = normalize(move_direction);
+            }
+            update_player_move_dir();
         }
-        else if (key == GLFW_KEY_S)
-        {
-            move_direction.y += action == GLFW_PRESS ? 1 : -1;
-        }
-        else if (key == GLFW_KEY_A)
-        {
-            move_direction.x += action == GLFW_PRESS ? -1 : 1;
-        }
-        else if (key == GLFW_KEY_D)
-        {
-            move_direction.x += action == GLFW_PRESS ? 1 : -1;
-        }
-        if (length(move_direction) >= 1)
-        {
-            motion.last_move_direction = normalize(move_direction);
-        }
-        update_player_move_dir();
     }
 
     // Exiting game on Esc
@@ -533,6 +552,8 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
     // xpos and ypos are relative to the top-left of the window, the player's
     // default facing direction is (1, 0)
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if (registry.deathTimers.has(player))
+        return;
     Motion &motion = registry.motions.get(player);
     vec2 direction = motion.position - mouse_position;
     vec2 direction_normalized = normalize(direction);
@@ -544,8 +565,9 @@ void WorldSystem::on_mouse_click(int button, int action, int mods)
 {
     mods; // to hide errors
     Motion &motion = registry.motions.get(player);
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !registry.deathTimers.has(player))
     {
+        Mix_PlayChannel(-1, laser_shot_sound, 0);
         createProjectile(renderer, motion.position, motion.angle, true);
     }
 }
