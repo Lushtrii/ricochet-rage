@@ -83,6 +83,7 @@ GLFWwindow *WorldSystem::create_window()
 
     // Create the main window (for rendering, keyboard, and mouse input)
     window = glfwCreateWindow(window_width_px, window_height_px, "Ricochet Rage", nullptr, nullptr);
+    glfwSetWindowSize(window, window_width_px, window_height_px);
 
     if (window == nullptr)
     {
