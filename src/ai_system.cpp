@@ -35,18 +35,17 @@ void AISystem::step(float elapsed_ms)
 		} else if (enemyState == EnemyState::PURSUING) {
 			if (registry.reloadTimes.has(enemy))
 			{
-				ReloadTime &counter = registry.reloadTimes.get(enemy);
-				counter.counter_ms -= elapsed_ms;
-
-				if (counter.counter_ms > 0)
-				{
+                ranged_enemy_pursue(enemy, elapsed_ms, playerMotion, enemyState);
+            } 
+			else if (registry.meleeAttacks.has(enemy))
+			{
+				Motion& enemyMotion = registry.motions.get(enemy);
+				if (length(playerMotion.position - enemyMotion.position) > meleeDistance) {
 					context_chase(enemy, playerMotion);
+				} else {
+					enemyState = EnemyState::ATTACK;
 				}
-				else
-				{
-					stop_and_shoot(enemy, counter, elapsed_ms, playerMotion);
-				}
-			}
+            }
 		// State for avoiding obstacles MAY NOT NEED TO USE
 		} else if (enemyState == EnemyState::AVOIDWALL) {
 			if (registry.motions.has(enemy)) {
@@ -61,9 +60,34 @@ void AISystem::step(float elapsed_ms)
 					}
 				}
 			}
-	
-		}		
+		// State for attacking player
+		} else if (enemyState == EnemyState::ATTACK) {
+			if (registry.reloadTimes.has(enemy)) {
+				ReloadTime &counter = registry.reloadTimes.get(enemy);
+				stop_and_shoot(enemy, counter, elapsed_ms, playerMotion);
+			} else if (registry.meleeAttacks.has(enemy)) {
+				MeleeAttack &meleeAttack = registry.meleeAttacks.get(enemy);
+				stop_and_melee(enemy, meleeAttack, elapsed_ms, playerMotion, playerEntity);
+				enemyState = EnemyState::PURSUING;
+			}
+		}
 	}
+}
+
+// Pursuing logic for a ranged enemy, including shoot
+void AISystem::ranged_enemy_pursue(Entity &enemy, float elapsed_ms, Motion &playerMotion, EnemyState &enemyState)
+{
+    ReloadTime &counter = registry.reloadTimes.get(enemy);
+    counter.counter_ms -= elapsed_ms;
+
+    if (counter.counter_ms > 0)
+    {
+        context_chase(enemy, playerMotion);
+    }
+    else
+    {
+		enemyState = EnemyState::ATTACK;
+    }
 }
 
 // For smart context chasing, good for avoiding obstacles, although still robotic
@@ -101,6 +125,29 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 	enemyMotion.velocity = normalize(sumVelocity) * enemySpeed;
 }
 
+// Stop, winds up, and performs a melee attack on the player
+void AISystem::stop_and_melee(Entity &enemy, MeleeAttack &counter, float elapsed_ms, Motion &playerMotion, Entity &playerEntity) {
+	if (registry.motions.has(enemy)) 
+	{
+		counter.windup -= elapsed_ms;
+		Motion& enemyMotion = registry.motions.get(enemy);
+		enemyMotion.velocity = vec2(0.0f, 0.0f);
+		if (counter.windup < 0) {
+			if (registry.healths.has(playerEntity)) {
+				Health &playerHealth = registry.healths.get(playerEntity);
+				playerHealth.value -= counter.damage;
+				printf("10 damage");
+				if (registry.damageEffect.has(playerEntity)) {
+					DamageEffect &effect = registry.damageEffect.get(playerEntity);
+					effect.is_attacked = true;
+				}
+			}
+			counter.windup = counter.windupMax;
+
+		}
+	}
+}
+
 // Stops and shoots at the enemy at a certain rate
 void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_ms, Motion &playerMotion)
 {
@@ -120,8 +167,10 @@ void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_
 
         if (counter.take_aim_ms < 0)
         {
+			Enemy &enemyState = registry.enemies.get(enemy);
             counter.counter_ms = original_ms;
             counter.take_aim_ms = take_aim_ms;
+			enemyState.enemyState = EnemyState::PURSUING;
         }
     }
 };

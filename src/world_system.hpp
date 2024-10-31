@@ -48,6 +48,8 @@ private:
     // Helper functions
     void projectile_hit_character(Entity laser, Entity character);
 
+    void health_check(Health &health, const Entity &character);
+
     // restart level
     void restart_game();
 

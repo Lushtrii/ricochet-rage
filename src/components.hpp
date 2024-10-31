@@ -13,13 +13,14 @@ enum class EnemyState
 {
     ROAMING = 0,
     PURSUING = ROAMING + 1,
-    AVOIDWALL = PURSUING + 1
+    AVOIDWALL = PURSUING + 1,
+    ATTACK = AVOIDWALL + 1
 };
 
 // anything that is deadly to the player
 struct Enemy
 {
-    EnemyState enemyState = EnemyState::ROAMING;
+    EnemyState enemyState = EnemyState::PURSUING;
 };
 
 struct Health
@@ -52,6 +53,20 @@ struct Projectile
 {
     int bounces_remaining = 2;
     int is_player_projectile = true;
+};
+
+struct MeleeAttack
+{
+    int damage = 10;
+    float windup = 500;
+    float windupMax = 500;
+};
+
+struct DamageEffect
+{
+    bool is_attacked = false;
+    float damage_show_time = 200;
+    float max_show_time = 200;
 };
 
 struct Wall

@@ -192,6 +192,32 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         }
     }
 
+    // Check if the health of enemies or player is 0
+    for (Entity &entity: registry.healths.entities) {
+        Health &health = registry.healths.get(entity);
+        health_check(health, entity);
+    }
+
+    auto &damageEffects = registry.damageEffect;
+    // Check for damage effect
+    if (damageEffects.has(player)) {
+        DamageEffect &damageEffect = damageEffects.get(player);
+        if (damageEffect.is_attacked) {
+            damageEffect.damage_show_time -= elapsed_ms_since_last_update;
+            if (registry.colors.has(player)) {
+                vec3 &playerColor = registry.colors.get(player);
+                // make red
+                playerColor = {1.0, 0.0, 0.0};
+                if (damageEffect.damage_show_time < 0) {
+                    damageEffect.damage_show_time = damageEffect.max_show_time;
+                    playerColor = {1, 0.8f, 0.8f};
+                    damageEffect.is_attacked = false;
+                }
+            }
+
+        }
+    }
+
 
     // spawn new enemies
     next_enemy_spawn -= elapsed_ms_since_last_update * current_speed;
@@ -208,6 +234,12 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
                 150.f + uniform_dist(rng) * (window_height_px - 300.f)
             };
             is_valid_spawn = true;
+
+            // Check if it collides with the player
+            Motion &playerMotion = registry.motions.get(player);
+            if (length(playerMotion.position - spawn_pos) < 150.0f) {
+                is_valid_spawn = false;
+            }
 
             for (Entity entity : registry.walls.entities) {
                 Motion &wall_motion = registry.motions.get(entity);
@@ -329,13 +361,23 @@ void WorldSystem::projectile_hit_character(Entity laser, Entity character)
     Projectile &projectile = registry.projectiles.get(laser);
     health.applyDamage(projectile.bounces_remaining);
 
+    health_check(health, character);
+
+    // Remove the projectile
+    registry.remove_all_components_of(laser);
+}
+
+void WorldSystem::health_check(Health &health, const Entity &character)
+{
     if (health.value == 0)
     {
         if (registry.players.has(character))
         {
             // If player dies, respawn and reset game state
-            registry.deathTimers.emplace(character);
-			Mix_PlayChannel(-1, player_death_sound, 0);
+            if (registry.deathTimers.size() < 1) {
+                registry.deathTimers.emplace(character);
+                Mix_PlayChannel(-1, player_death_sound, 0);
+            }
         }
         else
         {
@@ -344,9 +386,6 @@ void WorldSystem::projectile_hit_character(Entity laser, Entity character)
             registry.remove_all_components_of(character);
         }
     }
-
-    // Remove the projectile
-    registry.remove_all_components_of(laser);
 }
 
 // Compute collisions between entities
