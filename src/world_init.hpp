@@ -18,6 +18,9 @@ const float PROJECTILE_BB_WIDTH = 0.6f * 75.f;
 const float POWERUP_BB_HEIGHT = 100;
 const float POWERUP_BB_WIDTH = 100;
 
+void SaveGameToFile();
+bool LoadGameFromFile(RenderSystem *renderer);
+
 // the player
 Entity createPlayer(RenderSystem *renderer, vec2 pos);
 

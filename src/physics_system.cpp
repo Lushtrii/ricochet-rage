@@ -12,7 +12,7 @@ vec2 get_bounding_box(const Motion& motion)
 }
 
 // Checks for collision between 2 bounding boxes
-bool collides(const Motion& motion1, const Motion& motion2)
+bool PhysicsSystem::collides(const Motion& motion1, const Motion& motion2)
 {
     float motion1_left = motion1.position.x - abs(motion1.scale.x/2);
     float motion1_right = motion1.position.x + abs(motion1.scale.x/2);

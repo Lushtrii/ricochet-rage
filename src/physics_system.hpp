@@ -9,6 +9,7 @@
 class PhysicsSystem
 {
 public:
+	static bool collides(const Motion& motion1, const Motion& motion2);
 	void step(float elapsed_ms);
 
 	PhysicsSystem()

@@ -1,6 +1,8 @@
 
 #define GL3W_IMPLEMENTATION
 #include <gl3w.h>
+#include <fstream> // file io
+#include <iostream>
 
 // stlib
 #include <chrono>
@@ -57,6 +59,10 @@ int main()
 
         renderer.draw();
     }
+
+    // Save game state on close
+
+    SaveGameToFile();
 
     return EXIT_SUCCESS;
 }

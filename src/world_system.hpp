@@ -51,6 +51,7 @@ private:
     void health_check(Health &health, const Entity &character);
 
     // restart level
+    void init_values();
     void restart_game();
 
     // OpenGL window handle
@@ -72,7 +73,7 @@ private:
     // music references
     Mix_Music *background_music;
     Mix_Chunk *player_death_sound;
-	Mix_Chunk *enemy_death_sound;
+    Mix_Chunk *enemy_death_sound;
     Mix_Chunk *laser_shot_sound;
 
     // C++ random number generator

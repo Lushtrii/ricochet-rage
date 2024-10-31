@@ -4,6 +4,8 @@
 #include "tiny_ecs.hpp"
 #include "components.hpp"
 
+#include <string>
+
 class ECSRegistry
 {
     // Callbacks to remove a particular or all entities in the system

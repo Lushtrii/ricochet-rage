@@ -30,9 +30,11 @@ struct Health
     void applyDamage(int bounces_remaining)
     {
         int damage = 30 - 10 * bounces_remaining;
-        if (damage < 0) damage = 0;
+        if (damage < 0)
+            damage = 0;
         value -= damage;
-        if (value < 0) value = 0;
+        if (value < 0)
+            value = 0;
     }
 };
 
@@ -78,7 +80,8 @@ struct PowerUp
     float duration = 5;
 };
 
-struct Dash {
+struct Dash
+{
     // const
     float intial_velocity = 2500;
     float max_dash_time = 0.3f;
@@ -89,7 +92,7 @@ struct Dash {
     float recharge_timer = 0;
     float charges = max_dash_charges;
     float remaining_dash_time = 0;
-    vec2 dash_direction = vec2(0,1);
+    vec2 dash_direction = vec2(0, 1);
 };
 
 // All data relevant to the shape and motion of entities
@@ -99,8 +102,8 @@ struct Motion
     float angle = 0;
     vec2 velocity = {0, 0};
     vec2 scale = {10, 10};
-    vec2 last_physic_move = vec2(0,0);
-    vec2 last_move_direction = vec2(0,1);
+    vec2 last_physic_move = vec2(0, 0);
+    vec2 last_move_direction = vec2(0, 1);
 };
 
 // Stucture to store collision information

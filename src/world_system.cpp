@@ -11,14 +11,13 @@
 
 #include "physics_system.hpp"
 
-const size_t TOTAL_NUM_ENEMIES = 25;        // total number of enemies in the game level
-const size_t MAX_NUM_ENEMIES = 10;          // maximum number of enemies on the screen
-const size_t ENEMY_SPAWN_DELAY_MS = 4000;   // time between enemy spawns
+const size_t TOTAL_NUM_ENEMIES = 25;      // total number of enemies in the game level
+const size_t MAX_NUM_ENEMIES = 10;        // maximum number of enemies on the screen
+const size_t ENEMY_SPAWN_DELAY_MS = 4000; // time between enemy spawns
 
 // create the underwater world
-WorldSystem::WorldSystem() 
-    : points(0)
-    , next_enemy_spawn(0.f)
+WorldSystem::WorldSystem()
+    : points(0), next_enemy_spawn(0.f)
 {
     // Seeding rng with random device
     rng = std::default_random_engine(std::random_device()());
@@ -31,9 +30,9 @@ WorldSystem::~WorldSystem()
     if (background_music != nullptr)
         Mix_FreeMusic(background_music);
     if (player_death_sound != nullptr)
-		Mix_FreeChunk(player_death_sound);
-	if (enemy_death_sound != nullptr)
-		Mix_FreeChunk(enemy_death_sound);
+        Mix_FreeChunk(player_death_sound);
+    if (enemy_death_sound != nullptr)
+        Mix_FreeChunk(enemy_death_sound);
     if (laser_shot_sound != nullptr)
         Mix_FreeChunk(laser_shot_sound);
 
@@ -120,17 +119,18 @@ GLFWwindow *WorldSystem::create_window()
 
     background_music = Mix_LoadMUS(audio_path("background-music.wav").c_str());
     player_death_sound = Mix_LoadWAV(audio_path("player-death-sound.wav").c_str());
-	enemy_death_sound = Mix_LoadWAV(audio_path("enemy-death-sound.wav").c_str());
+    enemy_death_sound = Mix_LoadWAV(audio_path("enemy-death-sound.wav").c_str());
     laser_shot_sound = Mix_LoadWAV(audio_path("laser-shot-sound.wav").c_str());
 
-	if (background_music == nullptr || player_death_sound == nullptr || enemy_death_sound == nullptr || laser_shot_sound == nullptr) {
-		fprintf(stderr, "Failed to load sounds\n %s\n %s\n %s\n make sure the data directory is present",
-			audio_path("background-music.wav").c_str(),
-			audio_path("player-death-sound.wav").c_str(),
-			audio_path("enemy-death-sound.wav").c_str(),
-            audio_path("laser-shot-sound.wav").c_str());
-		return nullptr;
-	}
+    if (background_music == nullptr || player_death_sound == nullptr || enemy_death_sound == nullptr || laser_shot_sound == nullptr)
+    {
+        fprintf(stderr, "Failed to load sounds\n %s\n %s\n %s\n make sure the data directory is present",
+                audio_path("background-music.wav").c_str(),
+                audio_path("player-death-sound.wav").c_str(),
+                audio_path("enemy-death-sound.wav").c_str(),
+                audio_path("laser-shot-sound.wav").c_str());
+        return nullptr;
+    }
 
     return window;
 }
@@ -143,23 +143,30 @@ void WorldSystem::init(RenderSystem *renderer_arg)
     fprintf(stderr, "Loaded music\n");
 
     // Set all states to default
-    restart_game();
+    if (LoadGameFromFile(this->renderer)) {
+        init_values();
+    }
+    else 
+    {
+        restart_game();
+    }
 }
 
 // Update our game world
 bool WorldSystem::step(float elapsed_ms_since_last_update)
 {
-   
-    static int frames = 0; 
-    static double prevTime = glfwGetTime(); 
-    double currTime = glfwGetTime(); 
+
+    static int frames = 0;
+    static double prevTime = glfwGetTime();
+    double currTime = glfwGetTime();
 
     double delta = currTime - prevTime;
 
     frames++;
 
-    if (delta >= 1.0) {
-        
+    if (delta >= 1.0)
+    {
+
         int FPS = frames / delta;
 
         prevTime = currTime;
@@ -169,8 +176,6 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         title_ss << "Ricochet Rage | FPS: " << FPS;
         glfwSetWindowTitle(window, title_ss.str().c_str());
     }
-
-
 
     // Remove debug info from the last step
     while (registry.debugComponents.entities.size() > 0)
@@ -221,18 +226,19 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
 
     // spawn new enemies
     next_enemy_spawn -= elapsed_ms_since_last_update * current_speed;
-    if (num_enemies_seen < TOTAL_NUM_ENEMIES && registry.enemies.components.size() <= MAX_NUM_ENEMIES && next_enemy_spawn < 0.f) {
+    if (num_enemies_seen < TOTAL_NUM_ENEMIES && registry.enemies.components.size() <= MAX_NUM_ENEMIES && next_enemy_spawn < 0.f)
+    {
         num_enemies_seen++;
         next_enemy_spawn = (ENEMY_SPAWN_DELAY_MS / 2) + uniform_dist(rng) * (ENEMY_SPAWN_DELAY_MS / 2);
 
         bool is_valid_spawn = false;
         vec2 spawn_pos;
 
-        while (!is_valid_spawn) {
+        while (!is_valid_spawn)
+        {
             spawn_pos = {
-                150.f + uniform_dist(rng) * (window_width_px - 300.f), 
-                150.f + uniform_dist(rng) * (window_height_px - 300.f)
-            };
+                150.f + uniform_dist(rng) * (window_width_px - 300.f),
+                150.f + uniform_dist(rng) * (window_height_px - 300.f)};
             is_valid_spawn = true;
 
             // Check if it collides with the player
@@ -243,7 +249,8 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
 
             for (Entity entity : registry.walls.entities) {
                 Motion &wall_motion = registry.motions.get(entity);
-                if (length(wall_motion.position - spawn_pos) < 100.f) {
+                if (length(wall_motion.position - spawn_pos) < 100.f)
+                {
                     is_valid_spawn = false;
                     break;
                 }
@@ -251,13 +258,15 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         }
 
         bool spawn_melee = uniform_dist(rng) < 0.5;
-        if (spawn_melee) {
+        if (spawn_melee)
+        {
             createMeleeEnemy(renderer, spawn_pos);
-        } else {
+        }
+        else
+        {
             createRangedEnemy(renderer, spawn_pos);
         }
     }
-
 
     // Processing the player state
     assert(registry.screenStates.components.size() <= 1);
@@ -289,18 +298,23 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     return true;
 }
 
+void WorldSystem::init_values()
+{
+    // Reset the game speed
+    current_speed = 1.f;
+
+    // Reset the number of enemies seen
+    num_enemies_seen = 0;
+
+    player = registry.players.entities.back();
+}
+
 // Reset the world state to its initial state
 void WorldSystem::restart_game()
 {
     // Debugging for memory/component leaks
     registry.list_all_components();
     printf("Restarting\n");
-
-    // Reset the game speed
-    current_speed = 1.f;
-
-    // Reset the number of enemies seen
-    num_enemies_seen = 0;
 
     // Remove all entities that we created
     // All that have a motion, we could also iterate over all fish, eels, ... but that would be more cumbersome
@@ -311,8 +325,9 @@ void WorldSystem::restart_game()
     registry.list_all_components();
 
     // create a new player
-    player = createPlayer(renderer, {window_width_px / 2 - 150, window_height_px / 2});
+    createPlayer(renderer, {window_width_px / 2 - 150, window_height_px / 2});
     registry.colors.insert(player, {1, 0.8f, 0.8f});
+    init_values();
     update_player_move_dir();
 
     // create the game walls
@@ -320,39 +335,38 @@ void WorldSystem::restart_game()
     createWall(renderer, vec2(window_width_px / 2.f + 100, window_height_px / 2.f), vec2(100, 100), 0);
 
     // updated wall
-    //top right corner
+    // top right corner
     createWall(renderer, vec2(window_width_px - 50, window_height_px - 675), vec2(50, 50), 0);
 
-    //top left corner
+    // top left corner
     createWall(renderer, vec2(window_width_px - 1200, window_height_px - 675), vec2(50, 50), 0);
 
-    // bot right corner 
+    // bot right corner
     createWall(renderer, vec2(window_width_px - 50, window_height_px - 75), vec2(50, 50), 0);
 
-    // bot left corner 
+    // bot left corner
     createWall(renderer, vec2(window_width_px - 1200, window_height_px - 75), vec2(50, 50), 0);
-    
 
-    for (int i = 100; i <= 1150; i += 50) {
+    for (int i = 100; i <= 1150; i += 50)
+    {
         // Top wall
         createWall(renderer, vec2(window_width_px - i, window_height_px - 675), vec2(50, 50), 0);
-        
+
         // Bottom wall
         createWall(renderer, vec2(window_width_px - i, window_height_px - 75), vec2(50, 50), 0);
     }
 
-
-    for (int i = 125; i <= 625; i += 50) {
+    for (int i = 125; i <= 625; i += 50)
+    {
         // Left wall
         createWall(renderer, vec2(window_width_px - 1200, window_height_px - i), vec2(50, 50), 0);
-        
+
         // Right wall
         createWall(renderer, vec2(window_width_px - 50, window_height_px - i), vec2(50, 50), 0);
     }
 
-
     // create power ups
-    createInvincibilityPowerUp(renderer, { window_width_px / 2.f - 100, window_height_px / 2.f - 100});
+    createInvincibilityPowerUp(renderer, {window_width_px / 2.f - 100, window_height_px / 2.f - 100});
 }
 
 void WorldSystem::projectile_hit_character(Entity laser, Entity character)
@@ -376,6 +390,7 @@ void WorldSystem::health_check(Health &health, const Entity &character)
             // If player dies, respawn and reset game state
             if (registry.deathTimers.size() < 1) {
                 registry.deathTimers.emplace(character);
+                registry.motions.get(character).velocity = vec2(0,0);
                 Mix_PlayChannel(-1, player_death_sound, 0);
             }
         }
@@ -393,6 +408,7 @@ void WorldSystem::handle_collisions(float elapsed_ms)
 {
     elapsed_ms += 0.f; // to hide errors
     // Loop over all collisions detected by the physics system
+    std::unordered_map<unsigned int, bool> handled_bullets; 
     auto &collisionsRegistry = registry.collisions;
     for (uint i = 0; i < collisionsRegistry.components.size(); i++)
     {
@@ -410,7 +426,7 @@ void WorldSystem::handle_collisions(float elapsed_ms)
             }
 
             if (
-                registry.projectiles.has(entity_other) && 
+                registry.projectiles.has(entity_other) &&
                 !registry.projectiles.get(entity_other).is_player_projectile &&
                 !registry.deathTimers.has(entity))
             {
@@ -421,45 +437,48 @@ void WorldSystem::handle_collisions(float elapsed_ms)
         // handle collisions between projectiles and walls
         else if (registry.projectiles.has(entity))
         {
-            if (registry.walls.has(entity_other))
-            {
-                Projectile &projectile = registry.projectiles.get(entity);
-                if (projectile.bounces_remaining-- == 0)
+            if (handled_bullets.count(entity) == 0) {
+                handled_bullets.emplace(entity, true);
+                if (registry.walls.has(entity_other))
                 {
-                    registry.remove_all_components_of(entity);
-                    continue;
-                }
-                else
-                {
-                    TEXTURE_ASSET_ID id = TEXTURE_ASSET_ID::PROJECTILE_CHARGED;
-                    if (projectile.bounces_remaining == 0)
+                    Projectile &projectile = registry.projectiles.get(entity);
+                    if (projectile.bounces_remaining-- == 0)
                     {
-                        id = TEXTURE_ASSET_ID::PROJECTILE_SUPER_CHARGED;
+                        registry.remove_all_components_of(entity);
+                        continue;
                     }
-                    registry.renderRequests.get(entity).used_texture = id;
-                }
+                    else
+                    {
+                        TEXTURE_ASSET_ID id = TEXTURE_ASSET_ID::PROJECTILE_CHARGED;
+                        if (projectile.bounces_remaining == 0)
+                        {
+                            id = TEXTURE_ASSET_ID::PROJECTILE_SUPER_CHARGED;
+                        }
+                        registry.renderRequests.get(entity).used_texture = id;
+                    }
 
-                Motion &projMotion = registry.motions.get(entity);
-                Motion &wallMotion = registry.motions.get(entity_other);
-
-                // calculate which side of the wall the bullet hit
-                vec2 diff = projMotion.position - wallMotion.position;
-                vec2 diff_ratio = diff / wallMotion.scale;
-                vec2 normal;
-                if (abs(diff_ratio.x) > abs(diff_ratio.y))
-                {
-                    normal = vec2(1, 0);
-                    projMotion.angle = -projMotion.angle;
+                    Motion &projMotion = registry.motions.get(entity);
+                    Motion &wallMotion = registry.motions.get(entity_other);
+                    vec2 normal = vec2(1,0);
+                    vec2 normal2 = vec2(0,1);
+                    
+                    // chooses which wall normal to reflect off of based on projectile collision direction
+                    projMotion.position -= projMotion.last_physic_move; // move projectile outside of wall collision
+                    float dist = length(projMotion.last_physic_move);
+                    vec2 reflectedVelocity = reflect(projMotion.velocity, normal);
+                    projMotion.position += normalize(reflectedVelocity) * dist;
+        
+                    if (PhysicsSystem::collides(projMotion, wallMotion)) {
+                        projMotion.position -= normalize(reflectedVelocity) * dist;
+                        reflectedVelocity = reflect(projMotion.velocity, normal2);
+                        projMotion.angle = M_PI - projMotion.angle;
+                    }
+                    else {
+                        projMotion.angle = -projMotion.angle;
+                    }
+                    
+                    projMotion.velocity = reflectedVelocity;
                 }
-                else
-                {
-                    normal = vec2(0, 1);
-                    projMotion.angle = M_PI - projMotion.angle;
-                }
-
-                vec2 reflectedVelocity = reflect(projMotion.velocity, normal);
-                projMotion.position -= projMotion.last_physic_move; // move projectile outside of wall collision
-                projMotion.velocity = reflectedVelocity;
             }
         }
 
@@ -508,7 +527,8 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     Motion &motion = registry.motions.get(player);
 
-    if (!registry.deathTimers.has(player)) {
+    if (!registry.deathTimers.has(player))
+    {
         // player dashing
         if (action == GLFW_PRESS && key == GLFW_KEY_SPACE)
         {
@@ -521,32 +541,35 @@ void WorldSystem::on_key(int key, int, int action, int mod)
                 player_dash.dash_direction = motion.last_move_direction;
             }
         }
+    }
 
-        // player movement
-        if (action != GLFW_REPEAT)
+    // player movement
+    if (action != GLFW_REPEAT)
+    {
+        if (key == GLFW_KEY_W)
         {
-            if (key == GLFW_KEY_W)
-            {
-                move_direction.y += action == GLFW_PRESS ? -1 : 1;
-            }
-            else if (key == GLFW_KEY_S)
-            {
-                move_direction.y += action == GLFW_PRESS ? 1 : -1;
-            }
-            else if (key == GLFW_KEY_A)
-            {
-                move_direction.x += action == GLFW_PRESS ? -1 : 1;
-            }
-            else if (key == GLFW_KEY_D)
-            {
-                move_direction.x += action == GLFW_PRESS ? 1 : -1;
-            }
-            if (length(move_direction) >= 1)
-            {
-                motion.last_move_direction = normalize(move_direction);
-            }
+            move_direction.y += action == GLFW_PRESS ? -1 : 1;
+        }
+        else if (key == GLFW_KEY_S)
+        {
+            move_direction.y += action == GLFW_PRESS ? 1 : -1;
+        }
+        else if (key == GLFW_KEY_A)
+        {
+            move_direction.x += action == GLFW_PRESS ? -1 : 1;
+        }
+        else if (key == GLFW_KEY_D)
+        {
+            move_direction.x += action == GLFW_PRESS ? 1 : -1;
+        }
+        if (length(move_direction) >= 1)
+        {
+            motion.last_move_direction = normalize(move_direction);
+        }
+        if (!registry.deathTimers.has(player)) {
             update_player_move_dir();
         }
+        
     }
 
     // Exiting game on Esc
