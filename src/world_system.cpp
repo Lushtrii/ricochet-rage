@@ -326,8 +326,8 @@ void WorldSystem::restart_game()
 
     // create a new player
     createPlayer(renderer, {window_width_px / 2 - 150, window_height_px / 2});
-    registry.colors.insert(player, {1, 0.8f, 0.8f});
     init_values();
+    registry.colors.insert(player, {1, 0.8f, 0.8f});
     update_player_move_dir();
 
     // create the game walls

@@ -107,14 +107,38 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 		interestVector.push_back(direction.x * angleVector.x + direction.y * angleVector.y);
 	}
 	std::vector<float> dangerVector(interestVector.size());
+
+	float minDistance = std::numeric_limits<float>::max();
 	for (Entity &wall: registry.walls.entities) {
 		Motion& wallMotion = registry.motions.get(wall);
 		vec2 wallEnemyDelta = enemyMotion.position - wallMotion.position;
-		vec2 danger_delta = -normalize(wallEnemyDelta) * obstacleForce / length(wallEnemyDelta);
-		for (int i = 0; i < dangerVector.size(); i++) {
-			dangerVector[i] = danger_delta.x * directions[i].x + directions[i].y * danger_delta.y;
+		float distanceToWall = length(wallEnemyDelta);
+		
+		// move away from the wall if it is the closest
+		if (distanceToWall < minDistance) {
+			minDistance = distanceToWall;
+			vec2 danger_delta = -normalize(wallEnemyDelta) * obstacleForce / (distanceToWall);
+			for (int i = 0; i < dangerVector.size(); i++) {
+				dangerVector[i] = danger_delta.x * directions[i].x + directions[i].y * danger_delta.y;
+			}
 		}
 	}
+
+	// Avoid collisions with other enemies, when too close
+	for (Entity &other: registry.enemies.entities) {
+		if (other != enemy) {
+			Motion &otherMotion = registry.motions.get(other);
+			vec2 enemyEnemyDelta = enemyMotion.position - otherMotion.position;
+			float distanceToEnemy = length(enemyEnemyDelta);
+			if (distanceToEnemy < distanceBetweenEnemies) {
+				vec2 danger_delta = -normalize(enemyEnemyDelta) * enemyForce / distanceToEnemy;
+				for (int i = 0; i < dangerVector.size(); i++) {
+					dangerVector[i] += danger_delta.x * directions[i].x + directions[i].y * danger_delta.y;
+				}
+			}
+		}
+	}
+
 	// Context Vector
 	vec2 sumVelocity = vec2(0,0);
 	std::vector<float> contextVector(interestVector.size());
