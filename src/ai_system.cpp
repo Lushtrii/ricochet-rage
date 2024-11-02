@@ -152,7 +152,8 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 		// move away from the wall if it is the closest
 		if (distanceToWall < minDistance) {
 			minDistance = distanceToWall;
-			vec2 danger_delta = -normalize(wallEnemyDelta) * obstacleForce / (distanceToWall);
+
+			vec2 danger_delta = -normalize(wallEnemyDelta) * obstacleForce / (distanceToWall - max(wallMotion.scale.x, wallMotion.scale.y));
 			for (int i = 0; i < dangerVector.size(); i++) {
 				dangerVector[i] = danger_delta.x * directions[i].x + directions[i].y * danger_delta.y;
 			}
@@ -182,7 +183,7 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 		sumVelocity += contextVector[i] * directions[i];
 	}
 	enemyMotion.velocity = normalize(sumVelocity) * enemySpeed;
-	enemyMotion.angle = atan2(sumVelocity.y, sumVelocity.x);
+	enemyMotion.angle = atan2(-enemyPlayerDelta.y, -enemyPlayerDelta.x);
 }
 
 // Stop, winds up, and performs a melee attack on the player

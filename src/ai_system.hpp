@@ -31,9 +31,9 @@ private:
     const float original_ms = 3000;
 	const float take_aim_ms = 1500;
 	const float shoot_rate = 500;
-    const float obstacleForce = 100.0f;
-    const float enemyForce = 30.0f;
-    const float minDistanceToPlayer = 75.0f;
+    const float obstacleForce = 20.0f;
+    const float enemyForce = 20.0f;
+    const float minDistanceToPlayer = 100.0f;
     const float meleeDistance = 80.0f;
     const float distanceBetweenEnemies = 30.0f;
     const float los_increment = 50.0f;
