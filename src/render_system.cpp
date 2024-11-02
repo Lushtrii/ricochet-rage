@@ -6,6 +6,64 @@
 #include "common.hpp"
 #include "tiny_ecs_registry.hpp"
 
+
+void RenderSystem::updateAnimations(float elapsed_ms) {
+    float elapsed_seconds = elapsed_ms / 1000.f;
+    
+    for (auto entity : registry.animations.entities) {
+        Animation& anim = registry.animations.get(entity);
+		Motion& motion = registry.motions.get(entity);
+        if (!anim.is_playing) continue;
+
+		if (
+			(registry.players.has(entity) && (motion.velocity.x != 0 || motion.velocity.y != 0)) ||
+			(registry.enemies.has(entity) && registry.enemies.get(entity).enemyState != EnemyState::ROAMING)
+		) {
+			anim.current_time += elapsed_seconds;
+			if (anim.current_time >= anim.frame_time) {
+				anim.current_time = 0.f;
+				anim.current_frame++;
+				
+				if (anim.current_frame >= anim.num_frames) {
+					if (anim.loop) {
+						anim.current_frame = 0;
+					} else {
+						anim.current_frame = anim.num_frames - 1;
+						anim.is_playing = false;
+					}
+				}
+			}
+		} else {
+			anim.current_time = 0.f;
+			anim.current_frame = 0;
+		}
+    }
+}
+
+
+void RenderSystem::drawTexturedMeshWithAnim(Entity entity, const mat3& projection, const Animation& anim) {
+	assert(registry.renderRequests.has(entity));
+    const RenderRequest& render_request = registry.renderRequests.get(entity);
+    const ivec2& tex_size = texture_dimensions[(GLuint)render_request.used_texture];
+
+    float frame_width = float(anim.sprite_width) / tex_size.x;
+    float frame_x = (anim.current_frame * anim.sprite_width) / float(tex_size.x);
+
+    std::vector<TexturedVertex> textured_vertices(4);
+    textured_vertices[0].position = { -1.f/2, +1.f/2, 0.f };
+    textured_vertices[1].position = { +1.f/2, +1.f/2, 0.f };
+    textured_vertices[2].position = { +1.f/2, -1.f/2, 0.f };
+    textured_vertices[3].position = { -1.f/2, -1.f/2, 0.f };
+    textured_vertices[0].texcoord = { frame_x, 1.f };
+    textured_vertices[1].texcoord = { frame_x + frame_width, 1.f };
+    textured_vertices[2].texcoord = { frame_x + frame_width, 0.f };
+    textured_vertices[3].texcoord = { frame_x, 0.f };
+
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers[(GLuint)GEOMETRY_BUFFER_ID::SPRITE]);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(TexturedVertex) * textured_vertices.size(), textured_vertices.data());
+}
+
+
 void RenderSystem::drawTexturedMesh(Entity entity,
 									const mat3 &projection)
 {
@@ -168,7 +226,7 @@ void RenderSystem::drawToScreen()
 
 // Render our game world
 // http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-14-render-to-texture/
-void RenderSystem::draw()
+void RenderSystem::draw(float elapsed_ms)
 {
 	// Getting size of window
 	int w, h;
@@ -194,6 +252,9 @@ void RenderSystem::draw()
 							  // sprites back to front
 	gl_has_errors();
 	mat3 projection_2D = createProjectionMatrix();
+
+    updateAnimations(elapsed_ms);
+
 	// Draw all textured meshes that have a position and size component
 	for (Entity entity : registry.renderRequests.entities)
 	{
@@ -201,7 +262,11 @@ void RenderSystem::draw()
 			continue;
 		// Note, its not very efficient to access elements indirectly via the entity
 		// albeit iterating through all Sprites in sequence. A good point to optimize
-		drawTexturedMesh(entity, projection_2D);
+            
+        if (registry.animations.has(entity)) {
+            drawTexturedMeshWithAnim(entity, projection_2D, registry.animations.get(entity));
+        }
+        drawTexturedMesh(entity, projection_2D);
 	}
 
 	// Truely render to the screen

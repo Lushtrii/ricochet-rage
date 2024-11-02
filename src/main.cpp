@@ -56,8 +56,7 @@ int main()
         physics.step(elapsed_ms);
         world.handle_collisions(elapsed_ms);
         aiSystem.step(elapsed_ms);
-
-        renderer.draw();
+        renderer.draw(elapsed_ms);
     }
 
     // Save game state on close

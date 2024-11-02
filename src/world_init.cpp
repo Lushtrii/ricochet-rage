@@ -130,6 +130,19 @@ void SaveGameToFile()
             f << "screen_state" << "\n";
             f << s.darken_screen_factor << "\n";
         }
+        if (registry.animations.has(e))
+        {
+            Animation &a = registry.animations.get(e);
+            f << "animation" << "\n";
+            f << a.current_time << "\n";
+            f << a.frame_time << "\n";
+            f << a.current_frame << "\n";
+            f << a.num_frames << "\n";
+            f << a.sprite_width << "\n";
+            f << a.sprite_height << "\n";
+            f << a.is_playing << "\n";
+            f << a.loop << "\n";
+        }
     }
     f.close();
 }
@@ -146,6 +159,13 @@ void LoadFloat(std::ifstream &f, float &out)
     std::string line;
     getline(f, line);
     out = std::stof(line);
+}
+
+void LoadBool(std::ifstream &f, bool &out)
+{
+    std::string line;
+    getline(f, line);
+    out = std::stoi(line);
 }
 
 bool LoadGameFromFile(RenderSystem *renderer)
@@ -267,6 +287,18 @@ bool LoadGameFromFile(RenderSystem *renderer)
             ScreenState &s = registry.screenStates.emplace(e);
             LoadFloat(f, s.darken_screen_factor);
         }
+        else if (line == "animation")
+        {
+            Animation &a = registry.animations.emplace(e);
+            LoadFloat(f, a.current_time);
+            LoadFloat(f, a.frame_time);
+            LoadInt(f, a.current_frame);
+            LoadInt(f, a.num_frames);
+            LoadInt(f, a.sprite_width);
+            LoadInt(f, a.sprite_height);
+            LoadBool(f, a.is_playing);
+            LoadBool(f, a.loop);
+        }
     }
 
     return true;
@@ -296,6 +328,12 @@ Entity createPlayer(RenderSystem *renderer, vec2 pos)
     registry.players.emplace(entity);
     registry.dashes.emplace(entity);
     registry.damageEffect.emplace(entity);
+    
+    Animation &animation = registry.animations.emplace(entity);
+    animation.sprite_height = 32;
+    animation.sprite_width = 32;
+    animation.num_frames = 5;
+
     registry.renderRequests.insert(
         entity,
         {TEXTURE_ASSET_ID::PLAYER, // TEXTURE_COUNT indicates that no texture is needed
@@ -328,6 +366,10 @@ Entity createMeleeEnemy(RenderSystem *renderer, vec2 position)
     // create an empty enemies component
     registry.enemies.emplace(entity);
     registry.meleeAttacks.emplace(entity);
+    Animation &animation = registry.animations.emplace(entity);
+    animation.sprite_height = 32;
+    animation.sprite_width = 32;
+    animation.num_frames = 5;
 
     // Add raycasting to the enemy
     LineOfSight &raycast = registry.lightOfSight.emplace(entity);
@@ -367,6 +409,10 @@ Entity createRangedEnemy(RenderSystem *renderer, vec2 position)
     // create an empty enemies component
     registry.enemies.emplace(entity);
     registry.reloadTimes.emplace(entity);
+    Animation &animation = registry.animations.emplace(entity);
+    animation.sprite_height = 32;
+    animation.sprite_width = 32;
+    animation.num_frames = 5;
 
     // Add raycasting to the enemy
     LineOfSight &raycast = registry.lightOfSight.emplace(entity);
@@ -418,6 +464,10 @@ Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle)
     motion.scale = size;
 
     registry.walls.emplace(entity);
+    Animation &animation = registry.animations.emplace(entity);
+    animation.sprite_height = 50;
+    animation.sprite_width = 50;
+    animation.num_frames = 1;
     registry.renderRequests.insert(entity, {TEXTURE_ASSET_ID::WALL, // wall.png in render_system.hpp/components.hpp
                                             EFFECT_ASSET_ID::TEXTURED,
                                             GEOMETRY_BUFFER_ID::SPRITE});
@@ -449,6 +499,11 @@ Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_p
     Projectile &projectile = registry.projectiles.emplace(entity);
     projectile.is_player_projectile = is_player_projectile;
 
+    Animation &animation = registry.animations.emplace(entity);
+    animation.sprite_height = 32;
+    animation.sprite_width = 13;
+    animation.num_frames = 1;
+
     registry.renderRequests.insert(
         entity,
         {TEXTURE_ASSET_ID::PROJECTILE, // TEXTURE_COUNT indicates that no texture is needed
@@ -461,9 +516,7 @@ Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_p
 // create invincibility power up
 Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position)
 {
-
     const float scaleMultiplier = 0.5;
-
     auto entity = Entity();
 
     Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
@@ -474,7 +527,10 @@ Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position)
     motion.scale = vec2(POWERUP_BB_WIDTH, POWERUP_BB_HEIGHT) * scaleMultiplier;
 
     registry.powerUps.emplace(entity);
-
+    Animation &animation = registry.animations.emplace(entity);
+    animation.sprite_height = 50;
+    animation.sprite_width = 50;
+    animation.num_frames = 1;
     registry.renderRequests.insert(entity, {TEXTURE_ASSET_ID::INVINCIBILITY,
                                             EFFECT_ASSET_ID::TEXTURED,
                                             GEOMETRY_BUFFER_ID::SPRITE});

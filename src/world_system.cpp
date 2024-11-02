@@ -391,6 +391,12 @@ void WorldSystem::health_check(Health &health, const Entity &character)
             if (registry.deathTimers.size() < 1) {
                 registry.deathTimers.emplace(character);
                 registry.motions.get(character).velocity = vec2(0,0);
+            
+                Animation &player_anim = registry.animations.get(character);
+                player_anim.current_frame = 0;
+                player_anim.is_playing = false;
+                registry.colors.get(character) = {1.0f, 0.0f, 0.0f}; // red
+
                 Mix_PlayChannel(-1, player_death_sound, 0);
             }
         }

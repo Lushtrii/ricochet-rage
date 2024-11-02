@@ -32,9 +32,9 @@ class RenderSystem
     const std::array<std::string, texture_count> texture_paths = {
         /* textures_path("player-right.png"), */
         /* textures_path("ranged-enemy-left.png"), */
-        textures_path("player.png"),
-        textures_path("melee-enemy.png"),
-        textures_path("ranged-enemy.png"),
+        sprite_sheets_path("player-sprite-sheet.png"),
+        sprite_sheets_path("melee-enemy-sprite-sheet.png"),
+        sprite_sheets_path("ranged-enemy-sprite-sheet.png"),
         textures_path("projectile.png"),
         textures_path("charged-projectile.png"),
         textures_path("supercharged-projectile.png"),
@@ -76,11 +76,14 @@ public:
     ~RenderSystem();
 
     // Draw all entities
-    void draw();
+    void draw(float elapsed_ms);
 
     mat3 createProjectionMatrix();
 
 private:
+    void updateAnimations(float elapsed_ms);
+    void drawTexturedMeshWithAnim(Entity entity, const mat3& projection, const Animation& anim);
+
     // Internal drawing functions for each entity type
     void drawTexturedMesh(Entity entity, const mat3 &projection);
     void drawToScreen();

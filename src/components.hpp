@@ -163,6 +163,17 @@ struct Mesh
     std::vector<uint16_t> vertex_indices;
 };
 
+struct Animation {
+    float current_time = 0.f;
+    float frame_time = 0.2f;
+    int current_frame = 0;
+    int num_frames;
+    int sprite_width;
+    int sprite_height; 
+    bool is_playing = true;
+    bool loop = true;
+};
+
 /**
  * The following enumerators represent global identifiers refering to graphic
  * assets. For example TEXTURE_ASSET_ID are the identifiers of each texture

@@ -147,6 +147,7 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 		sumVelocity += contextVector[i] * directions[i];
 	}
 	enemyMotion.velocity = normalize(sumVelocity) * enemySpeed;
+	enemyMotion.angle = atan2(sumVelocity.y, sumVelocity.x);
 }
 
 // Stop, winds up, and performs a melee attack on the player
@@ -184,8 +185,8 @@ void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_
 
 		if (counter.shoot_rate < 0) {
             vec2 angleVector = normalize(enemyMotion.position - playerMotion.position);
-            enemyMotion.angle = atan2(angleVector.y, angleVector.x);
-            createProjectile(renderer_arg, enemyMotion.position, enemyMotion.angle, false);
+            float angle = atan2(angleVector.y, angleVector.x);
+            createProjectile(renderer_arg, enemyMotion.position, angle, false);
 			counter.shoot_rate = shoot_rate;
 		}
 
