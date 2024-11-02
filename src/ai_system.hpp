@@ -21,6 +21,8 @@ private:
     void context_chase(Entity &enemy,  Motion &playerMotion);
     void ranged_enemy_pursue(Entity &enemy, float elapsed_ms, Motion &playerMotion, EnemyState &enemyState);
     void stop_and_melee(Entity &enemy, MeleeAttack &counter, float elapsed_ms, Motion &playerMotion, Entity &playerEntity);
+    bool line_of_sight_check(Entity &enemy, Motion &playerMotion);
+    bool line_box_collision(Motion &enemyMotion, Motion &obstacleMotion, vec2 &directionDelta);
 
     float const enemySpeed = 50.f;
 	float const followingConstant = 0.4f;
@@ -34,6 +36,7 @@ private:
     const float minDistanceToPlayer = 75.0f;
     const float meleeDistance = 80.0f;
     const float distanceBetweenEnemies = 30.0f;
+    const float los_increment = 50.0f;
 
     // C++ random number generator
     std::default_random_engine rng;

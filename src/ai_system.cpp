@@ -78,17 +78,52 @@ void AISystem::step(float elapsed_ms)
 void AISystem::ranged_enemy_pursue(Entity &enemy, float elapsed_ms, Motion &playerMotion, EnemyState &enemyState)
 {
     ReloadTime &counter = registry.reloadTimes.get(enemy);
-    counter.counter_ms -= elapsed_ms;
+	// to prevent overflow
+	if (counter.counter_ms > 0) {
+		counter.counter_ms -= elapsed_ms;
+	}
+    context_chase(enemy, playerMotion);
 
-    if (counter.counter_ms > 0)
-    {
-        context_chase(enemy, playerMotion);
-    }
-    else
+    if (!line_of_sight_check(enemy, playerMotion) && counter.counter_ms < 0)
     {
 		enemyState = EnemyState::ATTACK;
     }
 }
+
+
+// Perform a light of sight check to see if there are any obstacles between the ranged enemy and the player
+bool AISystem::line_of_sight_check(Entity &enemy, Motion &playerMotion) {
+	Motion& enemyMotion = registry.motions.get(enemy);
+	vec2 deltaEnemyPlayer = enemyMotion.position - playerMotion.position;
+	for (Entity &obstacle: registry.walls.entities) {
+		Motion &wallMotion = registry.motions.get(obstacle);
+		if (line_box_collision(enemyMotion, wallMotion, deltaEnemyPlayer)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Whether the line and AABB intersect, not really the smartest method, iterate through points on the line and return true if it intersects
+bool AISystem::line_box_collision(Motion &enemyMotion, Motion &obstacleMotion, vec2 &directionDelta) {
+	vec2 normalizedDelta = normalize(directionDelta);
+	vec2 increment = los_increment * normalizedDelta;
+	vec2 curr = vec2(0, 0);
+	vec2 bounding_box = vec2(abs(obstacleMotion.scale.x), abs(obstacleMotion.scale.y));
+	float left = obstacleMotion.position.x - bounding_box.x/2;
+	float right = obstacleMotion.position.x + bounding_box.x/2;
+	float bot = obstacleMotion.position.y + bounding_box.y/2;
+	float top = obstacleMotion.position.y - bounding_box.y/2;
+	while (length(curr) < length(directionDelta)) {
+		curr += increment;
+		vec2 curr_pos = enemyMotion.position + curr;
+		if (curr_pos.x > left && curr_pos.x < right && curr_pos.y > top && curr_pos.y < bot) {
+			return true;
+		}
+	}
+	return false;
+}
+
 
 // For smart context chasing, good for avoiding obstacles, although still robotic
 void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
