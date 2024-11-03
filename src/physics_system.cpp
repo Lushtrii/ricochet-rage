@@ -1,7 +1,10 @@
 // internal
 #include "physics_system.hpp"
+#include "common.hpp"
+#include "components.hpp"
 #include "tiny_ecs_registry.hpp"
 #include "world_init.hpp"
+#include <cstdlib>
 #include <iostream>
 
 // Returns the local bounding coordinates scaled by the current size of the entity
@@ -9,6 +12,34 @@ vec2 get_bounding_box(const Motion& motion)
 {
 	// abs is to avoid negative scale due to the facing direction.
 	return { abs(motion.scale.x), abs(motion.scale.y) };
+}
+
+vec2 PhysicsSystem::calculateVertexPos(const Motion& m, const TexturedVertex& tv) {
+    Transform tr;
+    tr.rotate(m.angle);
+    tr.scale(m.scale);
+    vec3 transformedPos = tr.mat * tv.position;
+    return m.position + vec2(transformedPos.x, transformedPos.y);
+}
+
+bool PhysicsSystem::doesMeshCollide(const Motion& meshMotion, const std::vector<TexturedVertex>& meshVertices, const Motion& otherMotion) {
+    for (const TexturedVertex& tv : meshVertices) {
+        vec2 translatedPos = calculateVertexPos(meshMotion, tv);
+        if (isPointInBox(translatedPos, otherMotion)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool PhysicsSystem::isPointInBox(const vec2 point, const Motion& motion) {
+    vec2 boundingBox = get_bounding_box(motion);
+    float left = motion.position.x - boundingBox.x/2;
+    float right = motion.position.x + boundingBox.x/2;
+    float top = motion.position.y - boundingBox.y/2;
+    float bot = motion.position.y + boundingBox.y/2;
+
+    return (left <= point.x) && (point.x <= right) && (top <= point.y) && (point.y <= bot);
 }
 
 // Checks for collision between 2 bounding boxes
@@ -75,6 +106,10 @@ void PhysicsSystem::step(float elapsed_ms)
 			Motion& motion_j = motion_container.components[j];
 			if (collides(motion_i, motion_j))
 			{
+                const std::vector<TexturedVertex> meshVertices = registry.meshPtrs.get(entity_i)->vertices;
+                if (registry.projectiles.has(entity_i) && !doesMeshCollide(motion_i, meshVertices, motion_j)) {
+                        continue;
+                }
 
 				Entity entity_j = motion_container.entities[j];
 				// Create a collisions event

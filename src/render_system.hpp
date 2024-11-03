@@ -23,9 +23,8 @@ class RenderSystem
 
     // Make sure these paths remain in sync with the associated enumerators.
     // Associated id with .obj path
-    const std::vector<std::pair<GEOMETRY_BUFFER_ID, std::string>> mesh_paths =
-    {
-            // specify meshes of assets here
+    const std::vector<std::pair<GEOMETRY_BUFFER_ID, std::string>> mesh_paths ={
+        {GEOMETRY_BUFFER_ID::PROJECTILE, mesh_path("projectile.obj")},
     };
 
     // Make sure these paths remain in sync with the associated enumerators.

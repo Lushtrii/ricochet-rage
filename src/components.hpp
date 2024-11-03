@@ -1,5 +1,6 @@
 #pragma once
 #include "common.hpp"
+#include <cstdint>
 #include <vector>
 #include <unordered_map>
 #include "../ext/stb_image/stb_image.h"
@@ -166,10 +167,11 @@ struct TexturedVertex
 // Mesh datastructure for storing vertex and index buffers
 struct Mesh
 {
-    static bool loadFromOBJFile(std::string obj_path, std::vector<ColoredVertex> &out_vertices, std::vector<uint16_t> &out_vertex_indices, vec2 &out_size);
+    static bool loadFromOBJFile(std::string obj_path, std::vector<TexturedVertex> &out_vertices, std::vector<uint16_t> &out_vertex_indices, std::vector<uint16_t>& out_uv_indices, vec2 &out_size);
     vec2 original_size = {1, 1};
-    std::vector<ColoredVertex> vertices;
+    std::vector<TexturedVertex> vertices;
     std::vector<uint16_t> vertex_indices;
+    std::vector<uint16_t> uv_indices;
 };
 
 struct Animation {
@@ -241,10 +243,10 @@ const int effect_count = (int)EFFECT_ASSET_ID::EFFECT_COUNT;
 enum class GEOMETRY_BUFFER_ID
 {
     SPRITE = 0,
-    DEBUG_LINE = SPRITE + 1,
-    SCREEN_TRIANGLE = DEBUG_LINE + 1,
+    SCREEN_TRIANGLE = SPRITE + 1,
     UI_COMPONENT = SCREEN_TRIANGLE + 1,
-    GEOMETRY_COUNT = UI_COMPONENT + 1
+    PROJECTILE = UI_COMPONENT + 1,
+    GEOMETRY_COUNT = PROJECTILE + 1
 };
 
 enum class SCREEN_ID

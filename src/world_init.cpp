@@ -436,27 +436,6 @@ Entity createRangedEnemy(RenderSystem *renderer, vec2 position)
     return entity;
 }
 
-Entity createLine(vec2 position, vec2 scale)
-{
-    Entity entity = Entity();
-
-    // Store a reference to the potentially re-used mesh object (the value is stored in the resource cache)
-    registry.renderRequests.insert(
-        entity, {TEXTURE_ASSET_ID::TEXTURE_COUNT,
-                 EFFECT_ASSET_ID::TEXTURED,
-                 GEOMETRY_BUFFER_ID::DEBUG_LINE});
-
-    // Create motion
-    Motion &motion = registry.motions.emplace(entity);
-    motion.angle = 0.f;
-    motion.velocity = {0, 0};
-    motion.position = position;
-    motion.scale = scale;
-
-    registry.debugComponents.emplace(entity);
-    return entity;
-}
-
 // create our wall entity
 Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle)
 {
@@ -491,7 +470,7 @@ Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_p
     auto entity = Entity();
 
     // Store a reference to the potentially re-used mesh object
-    Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
+    Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::PROJECTILE);
     registry.meshPtrs.emplace(entity, &mesh);
 
     // Setting initial motion values
@@ -507,16 +486,16 @@ Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_p
     Projectile &projectile = registry.projectiles.emplace(entity);
     projectile.is_player_projectile = is_player_projectile;
 
-    Animation &animation = registry.animations.emplace(entity);
-    animation.sprite_height = 32;
-    animation.sprite_width = 13;
-    animation.num_frames = 1;
+    /* Animation &animation = registry.animations.emplace(entity); */
+    /* animation.sprite_height = 32; */
+    /* animation.sprite_width = 13; */
+    /* animation.num_frames = 1; */
 
     registry.renderRequests.insert(
         entity,
         {TEXTURE_ASSET_ID::PROJECTILE, // TEXTURE_COUNT indicates that no texture is needed
          EFFECT_ASSET_ID::TEXTURED,
-         GEOMETRY_BUFFER_ID::SPRITE});
+         GEOMETRY_BUFFER_ID::PROJECTILE});
 
     return entity;
 }

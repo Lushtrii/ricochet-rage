@@ -29,9 +29,6 @@ Entity createPlayer(RenderSystem *renderer, vec2 pos);
 Entity createMeleeEnemy(RenderSystem *renderer, vec2 position);
 Entity createRangedEnemy(RenderSystem *renderer, vec2 position);
 
-// a red line for debugging purposes
-Entity createLine(vec2 position, vec2 size);
-
 // the game walls
 Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle);
 
