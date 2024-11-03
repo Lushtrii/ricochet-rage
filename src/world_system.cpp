@@ -13,7 +13,7 @@
 
 #include "physics_system.hpp"
 
-const size_t TOTAL_NUM_ENEMIES = 25;      // total number of enemies in the game level
+const size_t TOTAL_NUM_ENEMIES = 40;      // total number of enemies in the game level
 const size_t MAX_NUM_ENEMIES = 10;        // maximum number of enemies on the screen
 const size_t ENEMY_SPAWN_DELAY_MS = 4000; // time between enemy spawns
 
