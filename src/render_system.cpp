@@ -1,6 +1,5 @@
 // internal
 #include "render_system.hpp"
-#include <GL/gl.h>
 #include <SDL.h>
 #include <cmath>
 

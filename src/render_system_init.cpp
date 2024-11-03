@@ -3,7 +3,6 @@
 #include "components.hpp"
 #include "render_system.hpp"
 
-#include <GL/gl.h>
 #include <array>
 #include <fstream>
 
