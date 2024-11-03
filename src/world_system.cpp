@@ -126,7 +126,7 @@ GLFWwindow *WorldSystem::create_window()
 
     if (background_music == nullptr || player_death_sound == nullptr || enemy_death_sound == nullptr || laser_shot_sound == nullptr)
     {
-        fprintf(stderr, "Failed to load sounds\n %s\n %s\n %s\n make sure the data directory is present",
+        fprintf(stderr, "Failed to load sounds\n %s\n %s\n %s\n %s\n make sure the data directory is present",
                 audio_path("background-music.wav").c_str(),
                 audio_path("player-death-sound.wav").c_str(),
                 audio_path("enemy-death-sound.wav").c_str(),
@@ -240,7 +240,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
 
     // spawn new enemies
     next_enemy_spawn -= elapsed_ms_since_last_update * current_speed;
-    if (num_enemies_seen < TOTAL_NUM_ENEMIES && registry.enemies.components.size() <= MAX_NUM_ENEMIES && next_enemy_spawn < 0.f)
+    if (num_enemies_seen < (int) TOTAL_NUM_ENEMIES && registry.enemies.components.size() <= MAX_NUM_ENEMIES && next_enemy_spawn < 0.f)
     {
         num_enemies_seen++;
         next_enemy_spawn = (ENEMY_SPAWN_DELAY_MS / 2) + uniform_dist(rng) * (ENEMY_SPAWN_DELAY_MS / 2);
@@ -297,7 +297,6 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     assert(registry.screenStates.components.size() <= 1);
     ScreenState &screen = registry.screenStates.components[0];
 
-    float min_counter_ms = 3000.f;
     for (Entity entity : registry.deathTimers.entities)
     {
         registry.deathTimers.remove(entity);
@@ -462,12 +461,10 @@ void WorldSystem::handle_collisions(float elapsed_ms)
         }
 
         // handle collisions between projectiles and walls
-        else if (registry.projectiles.has(entity))
+        else if (registry.projectiles.has(entity) && registry.walls.has(entity_other))
         {
             if (handled_bullets.count(entity) == 0) {
                 handled_bullets.emplace(entity, true);
-                if (registry.walls.has(entity_other))
-                {
                     Projectile &projectile = registry.projectiles.get(entity);
                     if (projectile.bounces_remaining-- == 0)
                     {
@@ -505,7 +502,6 @@ void WorldSystem::handle_collisions(float elapsed_ms)
                     }
                     
                     projMotion.velocity = reflectedVelocity;
-                }
             }
         }
 
@@ -696,7 +692,6 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
 
 void WorldSystem::on_mouse_click(int button, int action, int mods)
 {
-    mods; // to hide errors
     if (action == GLFW_PRESS) {
         int activeScreen = renderer->getActiveScreen();
         if (activeScreen == (int) SCREEN_ID::TUTORIAL_SCREEN) {

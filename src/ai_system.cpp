@@ -154,7 +154,7 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 			minDistance = distanceToWall;
 
 			vec2 danger_delta = -normalize(wallEnemyDelta) * obstacleForce / (distanceToWall - max(wallMotion.scale.x, wallMotion.scale.y));
-			for (int i = 0; i < dangerVector.size(); i++) {
+			for (int i = 0; i < (int)dangerVector.size(); i++) {
 				dangerVector[i] = danger_delta.x * directions[i].x + directions[i].y * danger_delta.y;
 			}
 		}
@@ -168,7 +168,7 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 			float distanceToEnemy = length(enemyEnemyDelta);
 			if (distanceToEnemy < distanceBetweenEnemies) {
 				vec2 danger_delta = -normalize(enemyEnemyDelta) * enemyForce / distanceToEnemy;
-				for (int i = 0; i < dangerVector.size(); i++) {
+				for (int i = 0; i < (int)dangerVector.size(); i++) {
 					dangerVector[i] += danger_delta.x * directions[i].x + directions[i].y * danger_delta.y;
 				}
 			}
@@ -178,7 +178,7 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 	// Context Vector
 	vec2 sumVelocity = vec2(0,0);
 	std::vector<float> contextVector(interestVector.size());
-	for (int i = 0; i < interestVector.size(); i++) {
+	for (int i = 0; i < (int)interestVector.size(); i++) {
 		contextVector[i] = interestVector[i] - dangerVector[i];
 		sumVelocity += contextVector[i] * directions[i];
 	}
@@ -265,7 +265,7 @@ void AISystem::simple_chase_enemy(Entity &enemy, Motion &playersMotion)
 			if (length(abs(wallEnemyDelta)) < distanceToWalls) {
 				Enemy &enemyComp = registry.enemies.get(enemy);
 				enemyComp.enemyState = EnemyState::AVOIDWALL;
-				printf("State %d", enemyComp.enemyState);
+				printf("State %d", (int)enemyComp.enemyState);
 				if (angleVector.x < angleVector.y) {
 					enemyMotion.velocity = vec2(angleVector.x * enemySpeed, 0.0f);
 				} else {

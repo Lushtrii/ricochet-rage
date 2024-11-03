@@ -1,9 +1,11 @@
 #include "world_init.hpp"
 #include "common.hpp"
+#include "components.hpp"
 #include "render_system.hpp"
 #include "tiny_ecs_registry.hpp"
 #include "world_system.hpp"
 
+#include <cstdio>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -40,7 +42,6 @@ void SaveGameToFile(RenderSystem* renderer)
         }
         if (registry.meshPtrs.has(e))
         {
-            Mesh *&m = registry.meshPtrs.get(e);
             f << "mesh" << "\n";
         }
         if (registry.players.has(e))
@@ -148,25 +149,31 @@ void SaveGameToFile(RenderSystem* renderer)
     f.close();
 }
 
-void LoadInt(std::ifstream &f, int &out)
+int LoadInt(std::ifstream &f)
 {
     std::string line;
     getline(f, line);
-    out = std::stoi(line);
+    return std::stoi(line);
 }
 
-void LoadFloat(std::ifstream &f, float &out)
-{
+unsigned int LoadUnsignedInt(std::ifstream &f) {
     std::string line;
     getline(f, line);
-    out = std::stof(line);
+    return (unsigned int) std::stoi(line);
 }
 
-void LoadBool(std::ifstream &f, bool &out)
+float LoadFloat(std::ifstream &f)
 {
     std::string line;
     getline(f, line);
-    out = std::stoi(line);
+    return std::stof(line);
+}
+
+bool LoadBool(std::ifstream &f)
+{
+    std::string line;
+    getline(f, line);
+    return std::stoi(line);
 }
 
 bool LoadGameFromFile(RenderSystem *renderer)
@@ -188,24 +195,24 @@ bool LoadGameFromFile(RenderSystem *renderer)
         else if (line == "motion")
         {
             Motion &motion = registry.motions.emplace(e);
-            LoadFloat(f, motion.angle);
-            LoadFloat(f, motion.last_move_direction.x);
-            LoadFloat(f, motion.last_move_direction.y);
-            LoadFloat(f, motion.last_physic_move.x);
-            LoadFloat(f, motion.last_physic_move.y);
-            LoadFloat(f, motion.position.x);
-            LoadFloat(f, motion.position.y);
-            LoadFloat(f, motion.scale.x);
-            LoadFloat(f, motion.scale.y);
-            LoadFloat(f, motion.velocity.x);
-            LoadFloat(f, motion.velocity.y);
+            motion.angle = LoadFloat(f);
+            motion.last_move_direction.x = LoadFloat(f);
+            motion.last_move_direction.y = LoadFloat(f);
+            motion.last_physic_move.x = LoadFloat(f);
+            motion.last_physic_move.y = LoadFloat(f);
+            motion.position.x = LoadFloat(f);
+            motion.position.y = LoadFloat(f);
+            motion.scale.x = LoadFloat(f);
+            motion.scale.y = LoadFloat(f);
+            motion.velocity.x = LoadFloat(f);
+            motion.velocity.y = LoadFloat(f);
         }
         else if (line == "render_request")
         {
             RenderRequest &renderRequest = registry.renderRequests.emplace(e);
-            LoadInt(f, (int &)renderRequest.used_effect);
-            LoadInt(f, (int &)renderRequest.used_geometry);
-            LoadInt(f, (int &)renderRequest.used_texture);
+            renderRequest.used_effect = static_cast<EFFECT_ASSET_ID>(LoadInt(f));
+            renderRequest.used_geometry = static_cast<GEOMETRY_BUFFER_ID>(LoadInt(f));
+            renderRequest.used_texture = static_cast<TEXTURE_ASSET_ID>(LoadInt(f));
         }
         else if (line == "mesh")
         {
@@ -213,92 +220,92 @@ bool LoadGameFromFile(RenderSystem *renderer)
             registry.meshPtrs.emplace(e, &mesh);
         }
         else if (line == "player")
-            Player &player = registry.players.emplace(e);
+            registry.players.emplace(e);
         else if (line == "collision")
         {
             Entity other;
-            LoadInt(f, (int &)other);
-            Collision &c = registry.collisions.emplace(e, other);
+            other = LoadUnsignedInt(f);
+            registry.collisions.emplace(e, other);
         }
         else if (line == "enemy")
         {
             Enemy &enemy = registry.enemies.emplace(e);
-            LoadInt(f, (int &)enemy.enemyState);
+            enemy.enemyState = static_cast<EnemyState>(LoadInt(f));
         }
         else if (line == "health")
         {
             Health &h = registry.healths.emplace(e);
-            LoadInt(f, h.value);
+            h.value = LoadInt(f);
         }
         else if (line == "dash")
         {
             Dash &d = registry.dashes.emplace(e);
-            LoadFloat(f, d.charges);
-            LoadFloat(f, d.dash_direction.x);
-            LoadFloat(f, d.dash_direction.y);
-            LoadFloat(f, d.intial_velocity);
-            LoadFloat(f, d.max_dash_charges);
-            LoadFloat(f, d.max_dash_time);
-            LoadFloat(f, d.recharge_cooldown);
-            LoadFloat(f, d.recharge_timer);
-            LoadFloat(f, d.remaining_dash_time);
+            d.charges = LoadFloat(f);
+            d.dash_direction.x = LoadFloat(f);
+            d.dash_direction.y = LoadFloat(f);
+            d.intial_velocity = LoadFloat(f);
+            d.max_dash_charges = LoadFloat(f);
+            d.max_dash_time = LoadFloat(f);
+            d.recharge_cooldown = LoadFloat(f);
+            d.recharge_timer = LoadFloat(f);
+            d.remaining_dash_time = LoadFloat(f);
         }
         else if (line == "wall")
         {
-            Wall &w = registry.walls.emplace(e);
+            registry.walls.emplace(e);
         }
         else if (line == "color")
         {
             vec3 &c = registry.colors.emplace(e);
-            LoadFloat(f, c.x);
-            LoadFloat(f, c.y);
-            LoadFloat(f, c.z);
+            c.x = LoadFloat(f);
+            c.y = LoadFloat(f);
+            c.z = LoadFloat(f);
         }
         else if (line == "death_timer")
         {
             DeathTimer &d = registry.deathTimers.emplace(e);
-            LoadFloat(f, d.counter_ms);
+            d.counter_ms = LoadFloat(f);
         }
         else if (line == "line_of_sight")
         {
             LineOfSight &l = registry.lightOfSight.emplace(e);
-            LoadFloat(f, l.ray_distance);
-            LoadFloat(f, l.ray_width);
+            l.ray_distance = LoadFloat(f);
+            l.ray_width = LoadFloat(f );
         }
         else if (line == "projectile")
         {
             Projectile &p = registry.projectiles.emplace(e);
-            LoadInt(f, p.bounces_remaining);
-            LoadInt(f, p.is_player_projectile);
+            p.bounces_remaining = LoadInt(f);
+            p.is_player_projectile = LoadInt(f);
         }
         else if (line == "reload_time")
         {
             ReloadTime &r = registry.reloadTimes.emplace(e);
-            LoadFloat(f, r.counter_ms);
-            LoadFloat(f, r.shoot_rate);
-            LoadFloat(f, r.take_aim_ms);
+            r.counter_ms = LoadFloat(f);
+            r.shoot_rate = LoadFloat(f);
+            r.take_aim_ms = LoadFloat(f);
         }
         else if (line == "power_up")
         {
             PowerUp &p = registry.powerUps.emplace(e);
-            LoadFloat(f, p.duration);
+            p.duration = LoadFloat(f);
         }
         else if (line == "screen_state")
         {
             ScreenState &s = registry.screenStates.emplace(e);
-            LoadFloat(f, s.darken_screen_factor);
+            s.darken_screen_factor = LoadFloat(f);
         }
         else if (line == "animation")
         {
             Animation &a = registry.animations.emplace(e);
-            LoadFloat(f, a.current_time);
-            LoadFloat(f, a.frame_time);
-            LoadInt(f, a.current_frame);
-            LoadInt(f, a.num_frames);
-            LoadInt(f, a.sprite_width);
-            LoadInt(f, a.sprite_height);
-            LoadBool(f, a.is_playing);
-            LoadBool(f, a.loop);
+            a.current_time = LoadFloat(f);
+            a.frame_time = LoadFloat(f);
+            a.current_frame = LoadInt(f);
+            a.num_frames = LoadInt(f);
+            a.sprite_width = LoadInt(f);
+            a.sprite_height = LoadInt(f);
+            a.is_playing = LoadBool(f);
+            a.loop = LoadBool(f);
         }
     }
 
