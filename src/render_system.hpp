@@ -30,8 +30,6 @@ class RenderSystem
 
     // Make sure these paths remain in sync with the associated enumerators.
     const std::array<std::string, texture_count> texture_paths = {
-        /* textures_path("player-right.png"), */
-        /* textures_path("ranged-enemy-left.png"), */
         sprite_sheets_path("player-sprite-sheet.png"),
         sprite_sheets_path("melee-enemy-sprite-sheet.png"),
         sprite_sheets_path("ranged-enemy-sprite-sheet.png"),
@@ -40,6 +38,15 @@ class RenderSystem
         textures_path("supercharged-projectile.png"),
         textures_path("wall.png"),
         textures_path("invincibility.png"),
+        textures_path("ui/play-button.png"),
+        textures_path("ui/tutorial-button.png"),
+        textures_path("ui/exit-button.png"),
+        textures_path("ui/button-border.png"),
+        textures_path("ui/resume-button.png"),
+        textures_path("ui/title-screen-button.png"),
+        textures_path("ui/save-quit-button.png"),
+        textures_path("ui/play-again-button.png"),
+        textures_path("ui/continue-button.png")
     };
 
     std::array<GLuint, effect_count> effects;
@@ -72,11 +79,41 @@ public:
     // shader
     bool initScreenTexture();
 
+    bool initMainMenu(bool saveFileExists);
+    void drawMainMenu();
+
+    bool initTutorial();
+    void drawTutorial();
+
+    bool initPauseMenu();
+    void drawPauseMenu();
+
+    bool initDeathScreen();
+    void drawDeathScreen();
+
+    bool initWinScreen();
+    void drawWinScreen();
+
+    int getActiveScreen() const;
+    void setActiveScreen(int activeScreen);
+
+    Entity getHoverEntity() {return hoverEntity;};
+
+    Entity createButton(vec2 position, int screenTiedTo, int screenGoTo, int textureID, bool isActive);
+
+    void flipActiveButtions(int activeScreen);
+
+    Entity createHoverEffect();
+
+    void drawButtons();
+
+    bool doesSaveFileExist();
+
     // Destroy resources associated to one or all entities created by the system
     ~RenderSystem();
 
     // Draw all entities
-    void draw(float elapsed_ms);
+    void draw(float elapsed_ms, bool isPaused);
 
     mat3 createProjectionMatrix();
 
@@ -97,6 +134,28 @@ private:
     GLuint off_screen_render_buffer_depth;
 
     Entity screen_state_entity;
+    Entity hoverEntity;
+
+    
+    GLuint mainMenuTexture;
+    const std::string mainMenuImgPath = textures_path("ui/main-menu.png");
+
+    GLuint tutorialTexture;
+    const std::string tutorialImgPath = textures_path("ui/tutorial.png");
+
+    GLuint pauseMenuTexture;
+    const std::string pauseMenuImgPath = textures_path("ui/pause-menu.png");
+
+    GLuint deathScreenTexture;
+    const std::string deathScreenImgPath = textures_path("ui/death-screen.png");
+
+    GLuint winScreenTexture;
+    const std::string winScreenImgPath = textures_path("ui/win-screen.png");
+
+    const float MENU_BUTTON_HEIGHT = 90.f;
+    const float MENU_BUTTON_WIDTH = 380.f;
+
+    bool saveFileExists;
 };
 
 bool loadEffectFromFile(

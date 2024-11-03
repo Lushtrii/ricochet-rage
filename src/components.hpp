@@ -1,5 +1,6 @@
 #pragma once
 #include "common.hpp"
+#include <GL/gl.h>
 #include <vector>
 #include <unordered_map>
 #include "../ext/stb_image/stb_image.h"
@@ -95,6 +96,14 @@ struct Dash
     vec2 dash_direction = vec2(0, 1);
 };
 
+struct Clickable {
+    int screenTiedTo;
+    int screenGoTo;
+    bool isCurrentlyHoveredOver = false;
+    bool isActive = false;
+    int textureID;
+};
+
 // All data relevant to the shape and motion of entities
 struct Motion
 {
@@ -122,10 +131,11 @@ struct Debug
 };
 extern Debug debugging;
 
-// Sets the brightness of the screen
+// Determines active screen
 struct ScreenState
 {
     float darken_screen_factor = -1;
+    int activeScreen = 0;
 };
 
 // A struct to refer to debugging graphics in the ECS
@@ -208,7 +218,16 @@ enum class TEXTURE_ASSET_ID
     PROJECTILE_SUPER_CHARGED = PROJECTILE_CHARGED + 1,
     WALL = PROJECTILE_SUPER_CHARGED + 1,
     INVINCIBILITY = WALL + 1,
-    TEXTURE_COUNT = INVINCIBILITY + 1
+    PLAY_BUTTON = INVINCIBILITY + 1,
+    TUTORIAL_BUTTON = PLAY_BUTTON + 1,
+    EXIT_BUTTON = TUTORIAL_BUTTON + 1,
+    BUTTON_BORDER = EXIT_BUTTON + 1,
+    RESUME_BUTTON = BUTTON_BORDER + 1,
+    TITLE_BUTTON = RESUME_BUTTON + 1,
+    SAVE_QUIT_BUTTON = TITLE_BUTTON + 1,
+    PLAY_AGAIN_BUTTON = SAVE_QUIT_BUTTON + 1,
+    CONTINUE_BUTTON = PLAY_AGAIN_BUTTON + 1,
+    TEXTURE_COUNT = CONTINUE_BUTTON + 1
 };
 const int texture_count = (int)TEXTURE_ASSET_ID::TEXTURE_COUNT;
 
@@ -225,8 +244,21 @@ enum class GEOMETRY_BUFFER_ID
     SPRITE = 0,
     DEBUG_LINE = SPRITE + 1,
     SCREEN_TRIANGLE = DEBUG_LINE + 1,
-    GEOMETRY_COUNT = SCREEN_TRIANGLE + 1
+    UI_COMPONENT = SCREEN_TRIANGLE + 1,
+    GEOMETRY_COUNT = UI_COMPONENT + 1
 };
+
+enum class SCREEN_ID
+{
+    MAIN_MENU = 0,
+    GAME_SCREEN = MAIN_MENU + 1,
+    TUTORIAL_SCREEN = GAME_SCREEN + 1,
+    EXIT_SCREEN = TUTORIAL_SCREEN + 1,
+    PAUSE_SCREEN = EXIT_SCREEN + 1,
+    DEATH_SCREEN = PAUSE_SCREEN + 1,
+    WIN_SCREEN = DEATH_SCREEN + 1,
+};
+
 const int geometry_count = (int)GEOMETRY_BUFFER_ID::GEOMETRY_COUNT;
 
 struct RenderRequest

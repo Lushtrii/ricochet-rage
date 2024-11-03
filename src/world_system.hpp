@@ -37,6 +37,8 @@ public:
 
     // Should the game be over ?
     bool is_over() const;
+    
+    bool isPaused() const {return m_isPaused;};
 
 private:
     void update_player_move_dir();
@@ -47,6 +49,7 @@ private:
 
     // Helper functions
     void projectile_hit_character(Entity laser, Entity character);
+    bool mouseOverBox(vec2 mousePos, Entity entity);
 
     void health_check(Health &health, const Entity &character);
 
@@ -63,8 +66,10 @@ private:
 
     // Game state
     RenderSystem *renderer;
+    bool m_isPaused = true;
     float current_speed;
     Entity player;
+    bool saveFileExists = false;
 
     int num_enemies_seen = 0;
 

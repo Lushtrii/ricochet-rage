@@ -1,6 +1,9 @@
 // internal
+#include "common.hpp"
+#include "components.hpp"
 #include "render_system.hpp"
 
+#include <GL/gl.h>
 #include <array>
 #include <fstream>
 
@@ -8,10 +11,18 @@
 
 // This creates circular header inclusion, that is quite bad.
 #include "tiny_ecs_registry.hpp"
+#include "world_init.hpp"
 
 // stlib
 #include <iostream>
 #include <sstream>
+
+
+bool RenderSystem::doesSaveFileExist() {
+    std::ifstream f("../Save1.data");
+    saveFileExists = f.good();
+    return saveFileExists;
+}
 
 // World initialization
 bool RenderSystem::init(GLFWwindow* window_arg)
@@ -60,6 +71,13 @@ bool RenderSystem::init(GLFWwindow* window_arg)
 	initializeGlEffects();
 	initializeGlGeometryBuffers();
 
+    saveFileExists = doesSaveFileExist();
+    initMainMenu(saveFileExists);
+	initTutorial();
+    initPauseMenu();
+    initDeathScreen();
+    initWinScreen();
+
 	return true;
 }
 
@@ -73,6 +91,7 @@ void RenderSystem::initializeGlTextures()
 		ivec2& dimensions = texture_dimensions[i];
 
 		stbi_uc* data;
+        stbi_set_flip_vertically_on_load(true);
 		data = stbi_load(path.c_str(), &dimensions.x, &dimensions.y, NULL, 4);
 
 		if (data == NULL)
@@ -122,7 +141,7 @@ void RenderSystem::initializeGlMeshes()
 {
 	for (uint i = 0; i < mesh_paths.size(); i++)
 	{
-		// Initialize meshes
+// Initialize meshes
 		GEOMETRY_BUFFER_ID geom_index = mesh_paths[i].first;
 		std::string name = mesh_paths[i].second;
 		Mesh::loadFromOBJFile(name, 
@@ -162,6 +181,23 @@ void RenderSystem::initializeGlGeometryBuffers()
 	// Counterclockwise as it's the default opengl front winding direction.
 	const std::vector<uint16_t> textured_indices = { 0, 3, 1, 1, 3, 2 };
 	bindVBOandIBO(GEOMETRY_BUFFER_ID::SPRITE, textured_vertices, textured_indices);
+
+	//////////////////////////
+	// Initialize ui component
+	// The position corresponds to the center of the texture.
+	std::vector<TexturedVertex> ui_vertices(4);
+	ui_vertices[0].position = { -1.f/2, +1.f/2, 0.f };
+	ui_vertices[1].position = { +1.f/2, +1.f/2, 0.f };
+	ui_vertices[2].position = { +1.f/2, -1.f/2, 0.f };
+	ui_vertices[3].position = { -1.f/2, -1.f/2, 0.f };
+	ui_vertices[0].texcoord = { 0.f, 1.f };
+	ui_vertices[1].texcoord = { 1.f, 1.f };
+	ui_vertices[2].texcoord = { 1.f, 0.f };
+	ui_vertices[3].texcoord = { 0.f, 0.f };
+
+	// Counterclockwise as it's the default opengl front winding direction.
+	const std::vector<uint16_t> ui_indices = { 0, 3, 1, 1, 3, 2 };
+	bindVBOandIBO(GEOMETRY_BUFFER_ID::UI_COMPONENT, ui_vertices, ui_indices);
 
 	//////////////////////////////////
 	// Initialize debug line
@@ -351,3 +387,193 @@ bool loadEffectFromFile(
 	return true;
 }
 
+bool RenderSystem::initMainMenu(bool saveFileExists) {
+	int framebuffer_width, framebuffer_height;
+	glfwGetFramebufferSize(const_cast<GLFWwindow*>(window), &framebuffer_width, &framebuffer_height);  // Note, this will be 2x the resolution given to glfwCreateWindow on retina displays
+
+	glGenTextures(1, &mainMenuTexture);
+
+    ivec2 dimensions;
+
+    stbi_uc* data;
+    stbi_set_flip_vertically_on_load(true);
+    data = stbi_load(mainMenuImgPath.c_str(), &dimensions.x, &dimensions.y, NULL, 4);
+
+    if (data == NULL)
+    {
+        const std::string message = "Could not load the file " + mainMenuImgPath + ".";
+        fprintf(stderr, "%s", message.c_str());
+        assert(false);
+    }
+    glBindTexture(GL_TEXTURE_2D, mainMenuTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x, dimensions.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    gl_has_errors();
+    stbi_image_free(data);
+
+
+    // Make menu buttons
+    int mainMenuScreen = (int) SCREEN_ID::MAIN_MENU;
+    createButton(vec2(window_width_px/2, 305), mainMenuScreen, (int)SCREEN_ID::GAME_SCREEN, (int)TEXTURE_ASSET_ID::CONTINUE_BUTTON, saveFileExists);
+    createButton(vec2(window_width_px/2, 305), mainMenuScreen, (int)SCREEN_ID::GAME_SCREEN, (int)TEXTURE_ASSET_ID::PLAY_BUTTON, !saveFileExists);
+    createButton(vec2(window_width_px/2, 460), mainMenuScreen, (int)SCREEN_ID::TUTORIAL_SCREEN, (int)TEXTURE_ASSET_ID::TUTORIAL_BUTTON, true);
+    createButton(vec2(window_width_px/2, 610), mainMenuScreen, (int)SCREEN_ID::EXIT_SCREEN, (int) TEXTURE_ASSET_ID::EXIT_BUTTON, true);
+
+    createHoverEffect();
+    
+	return true;
+}
+
+Entity RenderSystem::createButton(vec2 position, int screenTiedTo, int screenGoTo, int textureID, bool isActive) {
+    auto entity = Entity();
+
+    Mesh &mesh = getMesh(GEOMETRY_BUFFER_ID::UI_COMPONENT);
+    registry.meshPtrs.emplace(entity, &mesh);
+
+    Motion &motion = registry.motions.emplace(entity);
+    motion.position = position;
+    motion.scale = vec2(MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT);
+    motion.angle = 0;
+
+    Clickable& c = registry.clickables.emplace(entity);
+    c.screenTiedTo = screenTiedTo;
+    c.screenGoTo = screenGoTo;
+    c.textureID = textureID;
+    c.isCurrentlyHoveredOver = false;
+    c.isActive = isActive;
+
+    return entity;
+}
+
+bool RenderSystem::initTutorial() {
+	glGenTextures(1, &tutorialTexture);
+	
+	stbi_uc* data;
+	stbi_set_flip_vertically_on_load(true);
+	ivec2 dimensions;
+	data = stbi_load(tutorialImgPath.c_str(), &dimensions.x, &dimensions.y, NULL, 4);
+
+	if (data == NULL)
+	{
+		const std::string message = "Could not load the file " + mainMenuImgPath + ".";
+		fprintf(stderr, "%s", message.c_str());
+		assert(false);
+	}
+	glBindTexture(GL_TEXTURE_2D, tutorialTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x, dimensions.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	gl_has_errors();
+	stbi_image_free(data);
+
+	return true;
+}
+
+Entity RenderSystem::createHoverEffect() {
+    auto entity = Entity();
+
+    Mesh &mesh = getMesh(GEOMETRY_BUFFER_ID::UI_COMPONENT);
+    registry.meshPtrs.emplace(entity, &mesh);
+
+    Motion &motion = registry.motions.emplace(entity);
+    motion.position = {0, 0};
+    motion.scale = vec2(MENU_BUTTON_WIDTH, MENU_BUTTON_HEIGHT);
+    motion.angle = 0;
+
+    hoverEntity = entity;
+
+    return entity;
+}
+
+bool RenderSystem::initPauseMenu() {
+	glGenTextures(1, &pauseMenuTexture);
+	
+	stbi_uc* data;
+	stbi_set_flip_vertically_on_load(true);
+	ivec2 dimensions;
+	data = stbi_load(pauseMenuImgPath.c_str(), &dimensions.x, &dimensions.y, NULL, 4);
+
+	if (data == NULL)
+	{
+		const std::string message = "Could not load the file " + pauseMenuImgPath + ".";
+		fprintf(stderr, "%s", message.c_str());
+		assert(false);
+	}
+	glBindTexture(GL_TEXTURE_2D, pauseMenuTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x, dimensions.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	gl_has_errors();
+	stbi_image_free(data);
+    //
+    // Make menu buttons
+    int pauseScreen = (int) SCREEN_ID::PAUSE_SCREEN;
+    createButton(vec2(window_width_px/2, 305), pauseScreen, (int)SCREEN_ID::GAME_SCREEN, (int)TEXTURE_ASSET_ID::RESUME_BUTTON, false);
+    createButton(vec2(window_width_px/2, 460), pauseScreen, (int)SCREEN_ID::MAIN_MENU, (int)TEXTURE_ASSET_ID::TITLE_BUTTON, false);
+    createButton(vec2(window_width_px/2, 610), pauseScreen, (int)SCREEN_ID::EXIT_SCREEN, (int) TEXTURE_ASSET_ID::SAVE_QUIT_BUTTON, false);
+
+	return true;
+
+}
+
+bool RenderSystem::initDeathScreen() {
+	glGenTextures(1, &deathScreenTexture);
+	
+	stbi_uc* data;
+	stbi_set_flip_vertically_on_load(true);
+	ivec2 dimensions;
+	data = stbi_load(deathScreenImgPath.c_str(), &dimensions.x, &dimensions.y, NULL, 4);
+
+	if (data == NULL)
+	{
+		const std::string message = "Could not load the file " + deathScreenImgPath + ".";
+		fprintf(stderr, "%s", message.c_str());
+		assert(false);
+	}
+	glBindTexture(GL_TEXTURE_2D, deathScreenTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x, dimensions.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	gl_has_errors();
+	stbi_image_free(data);
+    //
+    // Make menu buttons
+    int deathScreen = (int) SCREEN_ID::DEATH_SCREEN;
+    createButton(vec2(window_width_px/2, 305), deathScreen, (int)SCREEN_ID::GAME_SCREEN, (int)TEXTURE_ASSET_ID::PLAY_AGAIN_BUTTON, false);
+    createButton(vec2(window_width_px/2, 460), deathScreen, (int)SCREEN_ID::MAIN_MENU, (int)TEXTURE_ASSET_ID::TITLE_BUTTON, false);
+    createButton(vec2(window_width_px/2, 610), deathScreen, (int)SCREEN_ID::EXIT_SCREEN, (int) TEXTURE_ASSET_ID::EXIT_BUTTON, false);
+
+	return true;
+
+}
+
+bool RenderSystem::initWinScreen() {
+	glGenTextures(1, &winScreenTexture);
+	
+	stbi_uc* data;
+	stbi_set_flip_vertically_on_load(true);
+	ivec2 dimensions;
+	data = stbi_load(winScreenImgPath.c_str(), &dimensions.x, &dimensions.y, NULL, 4);
+
+	if (data == NULL)
+	{
+		const std::string message = "Could not load the file " + winScreenImgPath + ".";
+		fprintf(stderr, "%s", message.c_str());
+		assert(false);
+	}
+	glBindTexture(GL_TEXTURE_2D, winScreenTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x, dimensions.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	gl_has_errors();
+	stbi_image_free(data);
+    //
+    // Make menu buttons
+    int winScreen = (int) SCREEN_ID::WIN_SCREEN;
+    createButton(vec2(window_width_px/2, 305), winScreen, (int)SCREEN_ID::GAME_SCREEN, (int)TEXTURE_ASSET_ID::PLAY_AGAIN_BUTTON, false);
+    createButton(vec2(window_width_px/2, 460), winScreen, (int)SCREEN_ID::MAIN_MENU, (int)TEXTURE_ASSET_ID::TITLE_BUTTON, false);
+    createButton(vec2(window_width_px/2, 610), winScreen, (int)SCREEN_ID::EXIT_SCREEN, (int) TEXTURE_ASSET_ID::EXIT_BUTTON, false);
+	return true;
+
+}

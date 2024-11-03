@@ -31,6 +31,7 @@ public:
     ComponentContainer<Dash> dashes;
     ComponentContainer<Health> healths;
     ComponentContainer<PowerUp> powerUps;
+    ComponentContainer<Clickable> clickables;
     ComponentContainer<MeleeAttack> meleeAttacks;
     ComponentContainer<DamageEffect> damageEffect;
     ComponentContainer<Animation> animations;
@@ -57,6 +58,7 @@ public:
         registry_list.push_back(&dashes);
         registry_list.push_back(&healths);
         registry_list.push_back(&powerUps);
+        registry_list.push_back(&clickables);
         registry_list.push_back(&meleeAttacks);
         registry_list.push_back(&damageEffect);
         registry_list.push_back(&animations);

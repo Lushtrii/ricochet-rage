@@ -1,12 +1,14 @@
 // Header
 #include "world_system.hpp"
 #include "common.hpp"
+#include "components.hpp"
 #include "tiny_ecs_registry.hpp"
 #include "world_init.hpp"
 
 // stlib
 #include <GLFW/glfw3.h>
 #include <cassert>
+#include <csignal>
 #include <sstream>
 
 #include "physics_system.hpp"
@@ -143,13 +145,25 @@ void WorldSystem::init(RenderSystem *renderer_arg)
     fprintf(stderr, "Loaded music\n");
 
     // Set all states to default
-    if (LoadGameFromFile(this->renderer)) {
+    saveFileExists = renderer->doesSaveFileExist();
+    if (saveFileExists) {
+        LoadGameFromFile(renderer_arg);
         init_values();
     }
     else 
     {
         restart_game();
     }
+}
+
+bool WorldSystem::mouseOverBox(vec2 mousePos, Entity entity) {
+    Motion m = registry.motions.get(entity);
+    float minX = m.position.x - abs(m.scale.x)/2;
+    float maxX = m.position.x + abs(m.scale.x)/2;
+    float minY = m.position.y - abs(m.scale.y)/2;
+    float maxY = m.position.y + abs(m.scale.y)/2;
+    return (minX <= mousePos.x) && (mousePos.x <= maxX)
+        && (minY <= mousePos.y) && (mousePos.y <= maxY);
 }
 
 // Update our game world
@@ -268,6 +282,17 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         }
     }
 
+    // Win condition
+    if (num_enemies_seen == TOTAL_NUM_ENEMIES && (int) registry.enemies.entities.size() == 0) {
+        renderer->setActiveScreen((int)SCREEN_ID::WIN_SCREEN);
+        renderer->flipActiveButtions(renderer->getActiveScreen());
+        m_isPaused = true;
+        std::remove("../Save1.data");
+        restart_game();
+        return true;
+    }
+
+
     // Processing the player state
     assert(registry.screenStates.components.size() <= 1);
     ScreenState &screen = registry.screenStates.components[0];
@@ -275,25 +300,15 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     float min_counter_ms = 3000.f;
     for (Entity entity : registry.deathTimers.entities)
     {
-        // progress timer
-        DeathTimer &counter = registry.deathTimers.get(entity);
-        counter.counter_ms -= elapsed_ms_since_last_update;
-        if (counter.counter_ms < min_counter_ms)
-        {
-            min_counter_ms = counter.counter_ms;
-        }
-
-        // restart the game once the death timer expired
-        if (counter.counter_ms < 0)
-        {
-            registry.deathTimers.remove(entity);
-            screen.darken_screen_factor = 0;
-            restart_game();
-            return true;
-        }
+        registry.deathTimers.remove(entity);
+        screen.darken_screen_factor = 0;
+        renderer->setActiveScreen((int) SCREEN_ID::DEATH_SCREEN);
+        renderer->flipActiveButtions(renderer->getActiveScreen());
+        std::remove("../Save1.data");
+        m_isPaused = true;
+        restart_game();
+        return true;
     }
-    // reduce window brightness if the player is dying
-    screen.darken_screen_factor = 1 - min_counter_ms / 3000;
 
     return true;
 }
@@ -318,8 +333,14 @@ void WorldSystem::restart_game()
 
     // Remove all entities that we created
     // All that have a motion, we could also iterate over all fish, eels, ... but that would be more cumbersome
-    while (registry.motions.entities.size() > 0)
-        registry.remove_all_components_of(registry.motions.entities.back());
+    //
+    assert(registry.motions.size() > 0 && "Motions registry does not contain items");
+    for (int i = (int)registry.motions.size() - 1; i >= 0; i--) {
+        Entity e = registry.motions.entities[i];
+        if (!registry.clickables.has(e) && e != renderer->getHoverEntity()) {
+            registry.remove_all_components_of(e);
+        }
+    }
 
     // Debugging for memory/component leaks
     registry.list_all_components();
@@ -387,7 +408,6 @@ void WorldSystem::health_check(Health &health, const Entity &character)
     {
         if (registry.players.has(character))
         {
-            // If player dies, respawn and reset game state
             if (registry.deathTimers.size() < 1) {
                 registry.deathTimers.emplace(character);
                 registry.motions.get(character).velocity = vec2(0,0);
@@ -399,6 +419,7 @@ void WorldSystem::health_check(Health &health, const Entity &character)
 
                 Mix_PlayChannel(-1, player_death_sound, 0);
             }
+            Mix_PlayChannel(-1, player_death_sound, 0);
         }
         else
         {
@@ -578,10 +599,27 @@ void WorldSystem::on_key(int key, int, int action, int mod)
         
     }
 
+    /* Entity mainMenuEntity; */
     // Exiting game on Esc
-    if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE)
+    if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE && !registry.deathTimers.has(player))
     {
-        glfwSetWindowShouldClose(window, true);
+        int activeScreen = renderer->getActiveScreen();
+        if (activeScreen == (int) SCREEN_ID::MAIN_MENU || activeScreen == (int) SCREEN_ID::DEATH_SCREEN) {
+            glfwSetWindowShouldClose(window, true);
+        }
+        else if (activeScreen == (int)SCREEN_ID::TUTORIAL_SCREEN) {
+            renderer->setActiveScreen((int)SCREEN_ID::MAIN_MENU);
+        }
+        else if (activeScreen == (int)SCREEN_ID::GAME_SCREEN){
+            m_isPaused = !m_isPaused;
+            renderer->setActiveScreen((int)SCREEN_ID::PAUSE_SCREEN);
+        }
+        else if (activeScreen == (int) SCREEN_ID::PAUSE_SCREEN) {
+            m_isPaused = false;
+            renderer->setActiveScreen((int)SCREEN_ID::GAME_SCREEN);
+        }
+        renderer->flipActiveButtions(renderer->getActiveScreen());
+        
     }
 
     // Resetting game
@@ -621,22 +659,83 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
     // xpos and ypos are relative to the top-left of the window, the player's
     // default facing direction is (1, 0)
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    if (registry.deathTimers.has(player))
+    int activeScreen = renderer->getActiveScreen();
+    Entity hoverEntity = renderer->getHoverEntity();
+    if (activeScreen == (int)SCREEN_ID::TUTORIAL_SCREEN) {
         return;
-    Motion &motion = registry.motions.get(player);
-    vec2 direction = motion.position - mouse_position;
-    vec2 direction_normalized = normalize(direction);
-    float angle = atan2(direction_normalized.y, direction_normalized.x);
-    motion.angle = angle;
+    }
+    else if (activeScreen != (int)SCREEN_ID::GAME_SCREEN) {
+        for (Entity e : registry.clickables.entities) {
+            bool mouseOver = mouseOverBox(mouse_position, e);
+            Clickable& c = registry.clickables.get(e);
+            if (c.screenTiedTo != activeScreen) {
+                continue;
+            }
+            if (mouseOver) {
+                c.isCurrentlyHoveredOver = true;
+                Motion& clickableMotion = registry.motions.get(e);
+                Motion& hoverMotion = registry.motions.get(hoverEntity);
+                hoverMotion.position = clickableMotion.position;
+                }
+            else {
+                c.isCurrentlyHoveredOver = false;
+                }
+            }
+    }
+
+    else {
+        if (registry.deathTimers.has(player))
+            return;
+        Motion &motion = registry.motions.get(player);
+        vec2 direction = motion.position - mouse_position;
+        vec2 direction_normalized = normalize(direction);
+        float angle = atan2(direction_normalized.y, direction_normalized.x);
+        motion.angle = angle;
+    }
 }
 
 void WorldSystem::on_mouse_click(int button, int action, int mods)
 {
     mods; // to hide errors
-    Motion &motion = registry.motions.get(player);
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !registry.deathTimers.has(player))
-    {
-        Mix_PlayChannel(-1, laser_shot_sound, 0);
-        createProjectile(renderer, motion.position, motion.angle, true);
+    if (action == GLFW_PRESS) {
+        int activeScreen = renderer->getActiveScreen();
+        if (activeScreen == (int) SCREEN_ID::TUTORIAL_SCREEN) {
+            return;
+        }
+        else if (activeScreen != (int)SCREEN_ID::GAME_SCREEN) {
+            for (Entity e : registry.clickables.entities) {
+                Clickable& c = registry.clickables.get(e);
+                if (c.screenTiedTo != activeScreen) {
+                    continue;
+                }
+                if (c.isCurrentlyHoveredOver) {
+                    if (c.screenGoTo == (int)SCREEN_ID::EXIT_SCREEN) {
+                        if (c.textureID == (int)TEXTURE_ASSET_ID::SAVE_QUIT_BUTTON) {
+                        SaveGameToFile(renderer);
+                        }
+                        glfwSetWindowShouldClose(window, true);
+                    }
+                    else {
+                        renderer->setActiveScreen(c.screenGoTo);
+                        renderer->flipActiveButtions(c.screenGoTo);
+                        if (c.screenGoTo == (int)SCREEN_ID::GAME_SCREEN) {
+                            m_isPaused = false;
+                        }
+                    }
+                    c.isCurrentlyHoveredOver = false;
+                    registry.renderRequests.remove(renderer->getHoverEntity());
+                }
+            }
+
+        }
+        else {
+            Motion &motion = registry.motions.get(player);
+            if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !registry.deathTimers.has(player))
+            {
+                Mix_PlayChannel(-1, laser_shot_sound, 0);
+                createProjectile(renderer, motion.position, motion.angle, true);
+            }
+
+        }
     }
 }

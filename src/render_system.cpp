@@ -1,9 +1,11 @@
 // internal
 #include "render_system.hpp"
+#include <GL/gl.h>
 #include <SDL.h>
 #include <cmath>
 
 #include "common.hpp"
+#include "components.hpp"
 #include "tiny_ecs_registry.hpp"
 
 
@@ -226,7 +228,7 @@ void RenderSystem::drawToScreen()
 
 // Render our game world
 // http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-14-render-to-texture/
-void RenderSystem::draw(float elapsed_ms)
+void RenderSystem::draw(float elapsed_ms, bool isPaused)
 {
 	// Getting size of window
 	int w, h;
@@ -251,23 +253,57 @@ void RenderSystem::draw(float elapsed_ms)
 							  // and alpha blending, one would have to sort
 							  // sprites back to front
 	gl_has_errors();
+
+
 	mat3 projection_2D = createProjectionMatrix();
 
-    updateAnimations(elapsed_ms);
+    if (!isPaused) {
+        updateAnimations(elapsed_ms);
+    }
 
 	// Draw all textured meshes that have a position and size component
-	for (Entity entity : registry.renderRequests.entities)
-	{
-		if (!registry.motions.has(entity))
-			continue;
-		// Note, its not very efficient to access elements indirectly via the entity
-		// albeit iterating through all Sprites in sequence. A good point to optimize
-            
-        if (registry.animations.has(entity)) {
-            drawTexturedMeshWithAnim(entity, projection_2D, registry.animations.get(entity));
+    const ScreenState& ss = registry.screenStates.get(screen_state_entity);
+    if (ss.activeScreen == (int)SCREEN_ID::MAIN_MENU) {
+        drawMainMenu();
+    }
+	else if (ss.activeScreen == (int)SCREEN_ID::TUTORIAL_SCREEN) {
+		drawTutorial();
+    }
+    else if (ss.activeScreen == (int)SCREEN_ID::GAME_SCREEN) {
+        for (Entity entity : registry.renderRequests.entities)
+        {
+            if (!registry.motions.has(entity) || registry.clickables.has(entity)) 
+                continue;
+            // Note, its not very efficient to access elements indirectly via the entity
+            // albeit iterating through all Sprites in sequence. A good point to optimize
+                
+            if (registry.animations.has(entity)) {
+                drawTexturedMeshWithAnim(entity, projection_2D, registry.animations.get(entity));
+            }
+            drawTexturedMesh(entity, projection_2D);
         }
-        drawTexturedMesh(entity, projection_2D);
-	}
+    }
+    else if (ss.activeScreen == (int)SCREEN_ID::PAUSE_SCREEN) {
+        for (Entity entity : registry.renderRequests.entities)
+        {
+            if (!registry.motions.has(entity) || registry.clickables.has(entity))
+                continue;
+            // Note, its not very efficient to access elements indirectly via the entity
+            // albeit iterating through all Sprites in sequence. A good point to optimize
+
+            if (registry.animations.has(entity)) {
+                drawTexturedMeshWithAnim(entity, projection_2D, registry.animations.get(entity));
+            }
+            drawTexturedMesh(entity, projection_2D);
+        }
+        drawPauseMenu();
+    }
+    else if (ss.activeScreen == (int) SCREEN_ID::DEATH_SCREEN) {
+        drawDeathScreen();
+    }
+    else if (ss.activeScreen == (int) SCREEN_ID::WIN_SCREEN) {
+        drawWinScreen();
+    }
 
 	// Truely render to the screen
 	drawToScreen();
@@ -275,6 +311,128 @@ void RenderSystem::draw(float elapsed_ms)
 	// flicker-free display with a double buffer
 	glfwSwapBuffers(window);
 	gl_has_errors();
+}
+
+void RenderSystem::drawMainMenu() {
+
+    // Draw buttons first since drawing front to back
+    // Setting shaders
+	// get the water texture, sprite mesh, and program
+	glUseProgram(effects[(GLuint)EFFECT_ASSET_ID::WATER]);
+	gl_has_errors();
+	// Draw the screen texture on the quad geometry
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers[(GLuint)GEOMETRY_BUFFER_ID::SCREEN_TRIANGLE]);
+	glBindBuffer(
+		GL_ELEMENT_ARRAY_BUFFER,
+		index_buffers[(GLuint)GEOMETRY_BUFFER_ID::SCREEN_TRIANGLE]); // Note, GL_ELEMENT_ARRAY_BUFFER associates
+																	 // indices to the bound GL_ARRAY_BUFFER
+	gl_has_errors();
+	const GLuint water_program = effects[(GLuint)EFFECT_ASSET_ID::WATER];
+	// Set clock
+	GLuint time_uloc = glGetUniformLocation(water_program, "time");
+	GLuint dead_timer_uloc = glGetUniformLocation(water_program, "darken_screen_factor");
+	glUniform1f(time_uloc, (float)(glfwGetTime() * 10.0f));
+	ScreenState &screen = registry.screenStates.get(screen_state_entity);
+	glUniform1f(dead_timer_uloc, screen.darken_screen_factor);
+	gl_has_errors();
+	// Set the vertex position and vertex texture coordinates (both stored in the
+	// same VBO)
+	GLint in_position_loc = glGetAttribLocation(water_program, "in_position");
+	glEnableVertexAttribArray(in_position_loc);
+	glVertexAttribPointer(in_position_loc, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void *)0);
+	gl_has_errors();
+
+	// Bind our texture in Texture Unit 0
+	glActiveTexture(GL_TEXTURE0);
+
+	glBindTexture(GL_TEXTURE_2D, mainMenuTexture);
+	gl_has_errors();
+	// Draw
+	glDrawElements(
+		GL_TRIANGLES, 3, GL_UNSIGNED_SHORT,
+		nullptr); // one triangle = 3 vertices; nullptr indicates that there is
+				  // no offset from the bound index buffer
+    drawButtons();
+	gl_has_errors();
+
+}
+
+void RenderSystem::drawTutorial() {
+
+	// Draw buttons first since drawing front to back
+	// Setting shaders
+	// get the water texture, sprite mesh, and program
+	glUseProgram(effects[(GLuint)EFFECT_ASSET_ID::WATER]);
+	gl_has_errors();
+	// Draw the screen texture on the quad geometry
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers[(GLuint)GEOMETRY_BUFFER_ID::SCREEN_TRIANGLE]);
+	glBindBuffer(
+		GL_ELEMENT_ARRAY_BUFFER,
+		index_buffers[(GLuint)GEOMETRY_BUFFER_ID::SCREEN_TRIANGLE]); // Note, GL_ELEMENT_ARRAY_BUFFER associates
+	// indices to the bound GL_ARRAY_BUFFER
+	gl_has_errors();
+	const GLuint water_program = effects[(GLuint)EFFECT_ASSET_ID::WATER];
+	// Set clock
+	GLuint time_uloc = glGetUniformLocation(water_program, "time");
+	GLuint dead_timer_uloc = glGetUniformLocation(water_program, "darken_screen_factor");
+	glUniform1f(time_uloc, (float)(glfwGetTime() * 10.0f));
+	ScreenState& screen = registry.screenStates.get(screen_state_entity);
+	glUniform1f(dead_timer_uloc, screen.darken_screen_factor);
+	gl_has_errors();
+	// Set the vertex position and vertex texture coordinates (both stored in the
+	// same VBO)
+	GLint in_position_loc = glGetAttribLocation(water_program, "in_position");
+	glEnableVertexAttribArray(in_position_loc);
+	glVertexAttribPointer(in_position_loc, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
+	gl_has_errors();
+
+	// Bind our texture in Texture Unit 0
+	glActiveTexture(GL_TEXTURE0);
+
+	glBindTexture(GL_TEXTURE_2D, tutorialTexture);
+	gl_has_errors();
+	// Draw
+	glDrawElements(
+		GL_TRIANGLES, 3, GL_UNSIGNED_SHORT,
+		nullptr); // one triangle = 3 vertices; nullptr indicates that there is
+	// no offset from the bound index buffer
+
+	gl_has_errors();
+}
+
+void RenderSystem::drawButtons() {
+    mat3 projection_2D = createProjectionMatrix();
+    bool anyButtonHoveredOver = false;
+    for (Entity e : registry.clickables.entities) {
+        Clickable c = registry.clickables.get(e);
+        if (!c.isActive) {
+            continue;
+        }
+        if (c.isCurrentlyHoveredOver) {
+            anyButtonHoveredOver = true;
+            if (!registry.renderRequests.has(hoverEntity)) {
+                registry.renderRequests.insert(hoverEntity, {
+                        TEXTURE_ASSET_ID::BUTTON_BORDER,
+                        EFFECT_ASSET_ID::TEXTURED,
+                        GEOMETRY_BUFFER_ID::UI_COMPONENT
+                        });
+            }
+            drawTexturedMesh(hoverEntity, projection_2D);
+        }
+        if (!registry.renderRequests.has(e)) {
+            registry.renderRequests.insert(e, {
+                    static_cast<TEXTURE_ASSET_ID>(c.textureID),
+                    EFFECT_ASSET_ID::TEXTURED,
+                    GEOMETRY_BUFFER_ID::UI_COMPONENT
+                    });
+        }
+        drawTexturedMesh(e, projection_2D);
+    }
+
+    if (!anyButtonHoveredOver && registry.renderRequests.has(hoverEntity)){
+        registry.renderRequests.remove(hoverEntity);
+    }
+
 }
 
 mat3 RenderSystem::createProjectionMatrix()
@@ -293,3 +451,170 @@ mat3 RenderSystem::createProjectionMatrix()
 	float ty = -(top + bottom) / (top - bottom);
 	return {{sx, 0.f, 0.f}, {0.f, sy, 0.f}, {tx, ty, 1.f}};
 }
+
+void RenderSystem::setActiveScreen(int activeScreen) {
+    ScreenState& ss = registry.screenStates.get(screen_state_entity);
+    ss.activeScreen = activeScreen;
+}
+
+int RenderSystem::getActiveScreen() const {
+    ScreenState& ss = registry.screenStates.get(screen_state_entity);
+    return ss.activeScreen;
+}
+
+void RenderSystem::drawPauseMenu() {
+	// Draw buttons first since drawing front to back
+	// Setting shaders
+	// get the water texture, sprite mesh, and program
+	glUseProgram(effects[(GLuint)EFFECT_ASSET_ID::WATER]);
+	gl_has_errors();
+	// Draw the screen texture on the quad geometry
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers[(GLuint)GEOMETRY_BUFFER_ID::SCREEN_TRIANGLE]);
+	glBindBuffer(
+		GL_ELEMENT_ARRAY_BUFFER,
+		index_buffers[(GLuint)GEOMETRY_BUFFER_ID::SCREEN_TRIANGLE]); // Note, GL_ELEMENT_ARRAY_BUFFER associates
+	// indices to the bound GL_ARRAY_BUFFER
+	gl_has_errors();
+	const GLuint water_program = effects[(GLuint)EFFECT_ASSET_ID::WATER];
+	// Set clock
+	GLuint time_uloc = glGetUniformLocation(water_program, "time");
+	GLuint dead_timer_uloc = glGetUniformLocation(water_program, "darken_screen_factor");
+	glUniform1f(time_uloc, (float)(glfwGetTime() * 10.0f));
+	ScreenState& screen = registry.screenStates.get(screen_state_entity);
+	glUniform1f(dead_timer_uloc, screen.darken_screen_factor);
+	gl_has_errors();
+	// Set the vertex position and vertex texture coordinates (both stored in the
+	// same VBO)
+	GLint in_position_loc = glGetAttribLocation(water_program, "in_position");
+	glEnableVertexAttribArray(in_position_loc);
+	glVertexAttribPointer(in_position_loc, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
+	gl_has_errors();
+
+	// Bind our texture in Texture Unit 0
+	glActiveTexture(GL_TEXTURE0);
+
+	glBindTexture(GL_TEXTURE_2D, pauseMenuTexture);
+	gl_has_errors();
+	// Draw
+	glDrawElements(
+		GL_TRIANGLES, 3, GL_UNSIGNED_SHORT,
+		nullptr); // one triangle = 3 vertices; nullptr indicates that there is
+	// no offset from the bound index buffer
+
+    drawButtons();
+
+
+	gl_has_errors();
+
+}
+
+void RenderSystem::drawDeathScreen() {
+	// Draw buttons first since drawing front to back
+	// Setting shaders
+	// get the water texture, sprite mesh, and program
+	glUseProgram(effects[(GLuint)EFFECT_ASSET_ID::WATER]);
+	gl_has_errors();
+	// Draw the screen texture on the quad geometry
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers[(GLuint)GEOMETRY_BUFFER_ID::SCREEN_TRIANGLE]);
+	glBindBuffer(
+		GL_ELEMENT_ARRAY_BUFFER,
+		index_buffers[(GLuint)GEOMETRY_BUFFER_ID::SCREEN_TRIANGLE]); // Note, GL_ELEMENT_ARRAY_BUFFER associates
+	// indices to the bound GL_ARRAY_BUFFER
+	gl_has_errors();
+	const GLuint water_program = effects[(GLuint)EFFECT_ASSET_ID::WATER];
+	// Set clock
+	GLuint time_uloc = glGetUniformLocation(water_program, "time");
+	GLuint dead_timer_uloc = glGetUniformLocation(water_program, "darken_screen_factor");
+	glUniform1f(time_uloc, (float)(glfwGetTime() * 10.0f));
+	ScreenState& screen = registry.screenStates.get(screen_state_entity);
+	glUniform1f(dead_timer_uloc, screen.darken_screen_factor);
+	gl_has_errors();
+	// Set the vertex position and vertex texture coordinates (both stored in the
+	// same VBO)
+	GLint in_position_loc = glGetAttribLocation(water_program, "in_position");
+	glEnableVertexAttribArray(in_position_loc);
+	glVertexAttribPointer(in_position_loc, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
+	gl_has_errors();
+
+	// Bind our texture in Texture Unit 0
+	glActiveTexture(GL_TEXTURE0);
+
+	glBindTexture(GL_TEXTURE_2D, deathScreenTexture);
+	gl_has_errors();
+	// Draw
+	glDrawElements(
+		GL_TRIANGLES, 3, GL_UNSIGNED_SHORT,
+		nullptr); // one triangle = 3 vertices; nullptr indicates that there is
+	// no offset from the bound index buffer
+
+    drawButtons();
+
+	gl_has_errors();
+
+}
+
+void RenderSystem::drawWinScreen() {
+	// Draw buttons first since drawing front to back
+	// Setting shaders
+	// get the water texture, sprite mesh, and program
+	glUseProgram(effects[(GLuint)EFFECT_ASSET_ID::WATER]);
+	gl_has_errors();
+	// Draw the screen texture on the quad geometry
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers[(GLuint)GEOMETRY_BUFFER_ID::SCREEN_TRIANGLE]);
+	glBindBuffer(
+		GL_ELEMENT_ARRAY_BUFFER,
+		index_buffers[(GLuint)GEOMETRY_BUFFER_ID::SCREEN_TRIANGLE]); // Note, GL_ELEMENT_ARRAY_BUFFER associates
+	// indices to the bound GL_ARRAY_BUFFER
+	gl_has_errors();
+	const GLuint water_program = effects[(GLuint)EFFECT_ASSET_ID::WATER];
+	// Set clock
+	GLuint time_uloc = glGetUniformLocation(water_program, "time");
+	GLuint dead_timer_uloc = glGetUniformLocation(water_program, "darken_screen_factor");
+	glUniform1f(time_uloc, (float)(glfwGetTime() * 10.0f));
+	ScreenState& screen = registry.screenStates.get(screen_state_entity);
+	glUniform1f(dead_timer_uloc, screen.darken_screen_factor);
+	gl_has_errors();
+	// Set the vertex position and vertex texture coordinates (both stored in the
+	// same VBO)
+	GLint in_position_loc = glGetAttribLocation(water_program, "in_position");
+	glEnableVertexAttribArray(in_position_loc);
+	glVertexAttribPointer(in_position_loc, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
+	gl_has_errors();
+
+	// Bind our texture in Texture Unit 0
+	glActiveTexture(GL_TEXTURE0);
+
+	glBindTexture(GL_TEXTURE_2D, winScreenTexture);
+	gl_has_errors();
+	// Draw
+	glDrawElements(
+		GL_TRIANGLES, 3, GL_UNSIGNED_SHORT,
+		nullptr); // one triangle = 3 vertices; nullptr indicates that there is
+	// no offset from the bound index buffer
+
+    drawButtons();
+
+	gl_has_errors();
+
+}
+
+void RenderSystem::flipActiveButtions(int activeScreen) {
+    for (Entity e : registry.clickables.entities) {
+        Clickable& c = registry.clickables.get(e);
+        bool shouldBeActive = c.screenTiedTo == activeScreen;
+        if (shouldBeActive && c.textureID == (int)TEXTURE_ASSET_ID::PLAY_BUTTON) {
+            c.isActive = !saveFileExists;
+        }
+        else if (shouldBeActive &&c.textureID == (int)TEXTURE_ASSET_ID::CONTINUE_BUTTON) {
+            c.isActive = saveFileExists;
+        }
+        else {
+            c.isActive = shouldBeActive;
+        }
+
+        if (!c.isActive && registry.renderRequests.has(e)) {
+            registry.renderRequests.remove(e);
+        }
+    }
+}
+

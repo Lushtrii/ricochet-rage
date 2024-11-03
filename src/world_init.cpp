@@ -1,12 +1,14 @@
 #include "world_init.hpp"
 #include "common.hpp"
+#include "render_system.hpp"
 #include "tiny_ecs_registry.hpp"
+#include "world_system.hpp"
 
 #include <iostream>
 #include <fstream>
 #include <string>
 
-void SaveGameToFile()
+void SaveGameToFile(RenderSystem* renderer)
 {
     std::ofstream f("../Save1.data");
 
@@ -29,8 +31,7 @@ void SaveGameToFile()
             f << motion.velocity.x << "\n"
               << motion.velocity.y << "\n";
         }
-        if (registry.renderRequests.has(e))
-        {
+        if (registry.renderRequests.has(e) && !registry.clickables.has(e) && e != renderer->getHoverEntity()) {
             RenderRequest &r = registry.renderRequests.get(e);
             f << "render_request" << "\n";
             f << (int)r.used_effect << "\n";
@@ -170,11 +171,11 @@ void LoadBool(std::ifstream &f, bool &out)
 
 bool LoadGameFromFile(RenderSystem *renderer)
 {
-    std::ifstream f("../Save1.data");
-    if (!f.is_open())
-    {
+    bool saveFileExists = renderer->doesSaveFileExist();
+    if (!saveFileExists) {
         return false;
     }
+    std::ifstream f("../Save1.data");
 
     std::string line;
     Entity e;
@@ -321,8 +322,8 @@ Entity createPlayer(RenderSystem *renderer, vec2 pos)
     motion.angle = 0.f;
     motion.velocity = {0.f, 0.f};
     /* motion.scale = mesh.original_size * 300.f; */
-    float multiplier = -0.5f;
-    motion.scale = vec2({multiplier * PLAYER_BB_WIDTH, multiplier * PLAYER_BB_HEIGHT});
+    float multiplier = 0.5f;
+    motion.scale = vec2({-multiplier * PLAYER_BB_WIDTH, multiplier * PLAYER_BB_HEIGHT});
 
     // create an empty player component for our character
     registry.players.emplace(entity);
@@ -361,7 +362,7 @@ Entity createMeleeEnemy(RenderSystem *renderer, vec2 position)
 
     float multiplier = 0.5f;
     // Setting initial values, scale is negative to make it face the opposite way
-    motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, -multiplier * ENEMY_BB_HEIGHT});
+    motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, multiplier * ENEMY_BB_HEIGHT});
 
     // create an empty enemies component
     registry.enemies.emplace(entity);
@@ -404,7 +405,7 @@ Entity createRangedEnemy(RenderSystem *renderer, vec2 position)
 
     float multiplier = 0.5f;
     // Setting initial values, scale is negative to make it face the opposite way
-    motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, -multiplier * ENEMY_BB_HEIGHT});
+    motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, multiplier * ENEMY_BB_HEIGHT});
 
     // create an empty enemies component
     registry.enemies.emplace(entity);
@@ -489,7 +490,7 @@ Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_p
     // Setting initial motion values
     Motion &motion = registry.motions.emplace(entity);
     motion.position = pos;
-    motion.angle = angle - M_PI / 2;
+    motion.angle = angle + M_PI / 2;
 
     vec2 direction = vec2(-cos(angle), -sin(angle));
     motion.velocity = direction * speed;
@@ -537,3 +538,4 @@ Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position)
 
     return entity;
 }
+
