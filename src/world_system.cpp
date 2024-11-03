@@ -386,7 +386,7 @@ void WorldSystem::restart_game()
     }
 
     // create power ups
-    createInvincibilityPowerUp(renderer, {window_width_px / 2.f - 100, window_height_px / 2.f - 100});
+    // createInvincibilityPowerUp(renderer, {window_width_px / 2.f - 100, window_height_px / 2.f - 100});
 }
 
 void WorldSystem::projectile_hit_character(Entity laser, Entity character)
