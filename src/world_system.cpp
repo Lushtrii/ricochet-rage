@@ -194,6 +194,10 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     // Remove debug info from the last step
     while (registry.debugComponents.entities.size() > 0)
         registry.remove_all_components_of(registry.debugComponents.entities.back());
+    
+    // Remove all health bars from last step
+    while (registry.healthBars.entities.size() > 0)
+        registry.remove_all_components_of(registry.healthBars.entities.back());
 
     // Removing out of screen entities
     auto &motions_registry = registry.motions;
@@ -215,6 +219,22 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     for (Entity &entity: registry.healths.entities) {
         Health &health = registry.healths.get(entity);
         health_check(health, entity);
+    }
+
+    // Add health bars
+    for (int i = (int)motions_registry.components.size() - 1; i >= 0; --i)
+    {
+        Motion &motion = motions_registry.components[i];
+        Entity entity = motions_registry.entities[i];
+
+        if (registry.healths.has(entity)) {
+            Health &health = registry.healths.get(entity);            
+            createHealthBar(
+                renderer,
+                {motion.position.x, motion.position.y - abs(motion.scale.y) / 2 - 15.f},
+                {abs(motion.scale.x) * health.value / 100, 8.f}
+            );
+        }
     }
 
     auto &damageEffects = registry.damageEffect;

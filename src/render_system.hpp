@@ -45,7 +45,8 @@ class RenderSystem
         textures_path("ui/title-screen-button.png"),
         textures_path("ui/save-quit-button.png"),
         textures_path("ui/play-again-button.png"),
-        textures_path("ui/continue-button.png")
+        textures_path("ui/continue-button.png"),
+        textures_path("health-bar.png")
     };
 
     std::array<GLuint, effect_count> effects;

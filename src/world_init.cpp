@@ -14,6 +14,10 @@ void SaveGameToFile(RenderSystem* renderer)
 {
     std::ofstream f("../Save1.data");
 
+    // Remove all health bars so they do not re-appear when reloaded
+    while (registry.healthBars.entities.size() > 0)
+        registry.remove_all_components_of(registry.healthBars.entities.back());
+
     for (Entity e : registry.motions.entities)
     {
         f << "entity" << "\n";
@@ -525,3 +529,25 @@ Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position)
     return entity;
 }
 
+
+Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 scale)
+{
+    Entity entity = Entity();
+
+    Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
+    registry.meshPtrs.emplace(entity, &mesh);
+
+    registry.renderRequests.insert(
+        entity, {
+            TEXTURE_ASSET_ID::HEALTH_BAR,
+            EFFECT_ASSET_ID::TEXTURED,
+            GEOMETRY_BUFFER_ID::SPRITE
+        });
+
+    Motion& motion = registry.motions.emplace(entity);
+    motion.position = position;
+    motion.scale = scale;
+
+    registry.healthBars.emplace(entity);
+    return entity;
+}

@@ -91,7 +91,6 @@ void PhysicsSystem::step(float elapsed_ms)
 		motion.position += motion.last_physic_move;
 	}
 
-
 	// Check for collisions between all moving entities
     ComponentContainer<Motion> &motion_container = registry.motions;
 	for(uint i = 0; i<motion_container.components.size(); i++)
@@ -106,10 +105,13 @@ void PhysicsSystem::step(float elapsed_ms)
 			Motion& motion_j = motion_container.components[j];
 			if (collides(motion_i, motion_j))
 			{
-                const std::vector<TexturedVertex> meshVertices = registry.meshPtrs.get(entity_i)->vertices;
-                if (registry.projectiles.has(entity_i) && !doesMeshCollide(motion_i, meshVertices, motion_j)) {
-                        continue;
-                }
+				if (registry.meshPtrs.has(entity_i))
+				{
+					const std::vector<TexturedVertex> meshVertices = registry.meshPtrs.get(entity_i)->vertices;
+					if (registry.projectiles.has(entity_i) && !doesMeshCollide(motion_i, meshVertices, motion_j)) {
+						continue;
+					}
+				}
 
 				Entity entity_j = motion_container.entities[j];
 				// Create a collisions event

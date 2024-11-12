@@ -140,7 +140,7 @@ void RenderSystem::initializeGlMeshes()
 {
 	for (uint i = 0; i < mesh_paths.size(); i++)
 	{
-// Initialize meshes
+		// Initialize meshes
 		GEOMETRY_BUFFER_ID geom_index = mesh_paths[i].first;
 		std::string name = mesh_paths[i].second;
 		Mesh::loadFromOBJFile(name, 
@@ -432,7 +432,7 @@ bool RenderSystem::initTutorial() {
 
 	if (data == NULL)
 	{
-		const std::string message = "Could not load the file " + mainMenuImgPath + ".";
+		const std::string message = "Could not load the file " + tutorialImgPath + ".";
 		fprintf(stderr, "%s", message.c_str());
 		assert(false);
 	}

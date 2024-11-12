@@ -39,6 +39,10 @@ struct Health
     }
 };
 
+struct HealthBar
+{
+};
+
 struct LineOfSight
 {
     float ray_distance = 300;
@@ -228,7 +232,8 @@ enum class TEXTURE_ASSET_ID
     SAVE_QUIT_BUTTON = TITLE_BUTTON + 1,
     PLAY_AGAIN_BUTTON = SAVE_QUIT_BUTTON + 1,
     CONTINUE_BUTTON = PLAY_AGAIN_BUTTON + 1,
-    TEXTURE_COUNT = CONTINUE_BUTTON + 1
+    HEALTH_BAR = CONTINUE_BUTTON + 1,
+    TEXTURE_COUNT = HEALTH_BAR + 1
 };
 const int texture_count = (int)TEXTURE_ASSET_ID::TEXTURE_COUNT;
 
