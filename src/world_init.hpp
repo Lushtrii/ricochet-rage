@@ -28,6 +28,7 @@ Entity createPlayer(RenderSystem *renderer, vec2 pos);
 // the prey
 Entity createMeleeEnemy(RenderSystem *renderer, vec2 position);
 Entity createRangedEnemy(RenderSystem *renderer, vec2 position);
+Entity createBossEnemy(RenderSystem *renderer, vec2 position);
 
 // the game walls
 Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle);

@@ -33,7 +33,10 @@ void AISystem::step(float elapsed_ms)
 			}
 		// State for pursuing and shooting at player
 		} else if (enemyState == EnemyState::PURSUING) {
-			if (registry.reloadTimes.has(enemy))
+			if (registry.bosses.has(enemy) && registry.reloadTimes.has(enemy) && registry.meleeAttacks.has(enemy)) {
+				boss_enemy_pursue(enemy, elapsed_ms, playerMotion, enemyState);
+            }
+			else if (registry.reloadTimes.has(enemy))
 			{
                 ranged_enemy_pursue(enemy, elapsed_ms, playerMotion, enemyState);
             } 
@@ -62,7 +65,18 @@ void AISystem::step(float elapsed_ms)
 			}
 		// State for attacking player
 		} else if (enemyState == EnemyState::ATTACK) {
-			if (registry.reloadTimes.has(enemy)) {
+			if (registry.bosses.has(enemy) && registry.reloadTimes.has(enemy) && registry.meleeAttacks.has(enemy)) {
+				Motion& enemyMotion = registry.motions.get(enemy);
+				if (length(playerMotion.position - enemyMotion.position) < meleeDistance) {
+					MeleeAttack &meleeAttack = registry.meleeAttacks.get(enemy);
+					stop_and_melee(enemy, meleeAttack, elapsed_ms, playerMotion, playerEntity);
+					enemyState = EnemyState::PURSUING;
+				} else {
+					ReloadTime &counter = registry.reloadTimes.get(enemy);
+					stop_and_shoot(enemy, counter, elapsed_ms, playerMotion);
+				}
+			}
+			else if (registry.reloadTimes.has(enemy)) {
 				ReloadTime &counter = registry.reloadTimes.get(enemy);
 				stop_and_shoot(enemy, counter, elapsed_ms, playerMotion);
 			} else if (registry.meleeAttacks.has(enemy)) {
@@ -78,18 +92,35 @@ void AISystem::step(float elapsed_ms)
 void AISystem::ranged_enemy_pursue(Entity &enemy, float elapsed_ms, Motion &playerMotion, EnemyState &enemyState)
 {
     ReloadTime &counter = registry.reloadTimes.get(enemy);
-	// to prevent overflow
-	if (counter.counter_ms > 0) {
-		counter.counter_ms -= elapsed_ms;
-	}
+    // to prevent overflow
+    if (counter.counter_ms > 0)
+    {
+        counter.counter_ms -= elapsed_ms;
+    }
     context_chase(enemy, playerMotion);
 
     if (!line_of_sight_check(enemy, playerMotion) && counter.counter_ms < 0)
     {
-		enemyState = EnemyState::ATTACK;
+        enemyState = EnemyState::ATTACK;
     }
 }
 
+void AISystem::boss_enemy_pursue(Entity &enemy, float elapsed_ms, Motion &playerMotion, EnemyState &enemyState)
+{
+    ReloadTime &counter = registry.reloadTimes.get(enemy);
+    // to prevent overflow
+    if (counter.counter_ms > 0)
+    {
+        counter.counter_ms -= elapsed_ms;
+    }
+    context_chase(enemy, playerMotion);
+
+	Motion& enemyMotion = registry.motions.get(enemy);
+    if ((!line_of_sight_check(enemy, playerMotion) && counter.counter_ms < 0) || length(playerMotion.position - enemyMotion.position) < meleeDistance)
+    {
+        enemyState = EnemyState::ATTACK;
+    }
+}
 
 // Perform a light of sight check to see if there are any obstacles between the ranged enemy and the player
 bool AISystem::line_of_sight_check(Entity &enemy, Motion &playerMotion) {
@@ -220,11 +251,14 @@ void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_
         enemyMotion.velocity = vec2(0.0f, 0.0f);
 
 		if (counter.shoot_rate < 0) {
-            vec2 angleVector = normalize(enemyMotion.position - playerMotion.position);
-            float angle = atan2(angleVector.y, angleVector.x);
-            createProjectile(renderer_arg, enemyMotion.position, angle, false);
-			counter.shoot_rate = shoot_rate;
-		}
+			if (registry.bosses.has(enemy)) {
+				shotgun_enemy(enemyMotion, playerMotion, counter);
+			} 
+			else 
+			{
+				single_shot_enemy(enemyMotion, playerMotion, counter);
+			}
+        }
 
         if (counter.take_aim_ms < 0)
         {
@@ -234,6 +268,26 @@ void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_
 			enemyState.enemyState = EnemyState::PURSUING;
         }
     }
+}
+
+// Do a single shot at the player
+void AISystem::single_shot_enemy(Motion &enemyMotion, Motion &playerMotion, ReloadTime &counter)
+{
+    vec2 angleVector = normalize(enemyMotion.position - playerMotion.position);
+    float angle = atan2(angleVector.y, angleVector.x);
+    createProjectile(renderer_arg, enemyMotion.position, angle, false);
+    counter.shoot_rate = shoot_rate;
+};
+
+// Do a spread out shotgun shot at the player
+void AISystem::shotgun_enemy(Motion &enemyMotion, Motion &playerMotion, ReloadTime &counter)
+{
+    vec2 angleVector = normalize(enemyMotion.position - playerMotion.position);
+    float angle = atan2(angleVector.y, angleVector.x);
+    createProjectile(renderer_arg, enemyMotion.position, angle, false);
+	createProjectile(renderer_arg, enemyMotion.position, angle + shotgun_angle, false);
+	createProjectile(renderer_arg, enemyMotion.position, angle - shotgun_angle, false);
+    counter.shoot_rate = shoot_rate;
 };
 
 // DEPRECATED: Extremely simple chase that goes to the players direction, does the Roomba thing when approaching a wall

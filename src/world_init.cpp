@@ -149,6 +149,10 @@ void SaveGameToFile(RenderSystem* renderer)
             f << a.is_playing << "\n";
             f << a.loop << "\n";
         }
+        if (registry.bosses.has(e)) 
+        {
+            f << "boss" << '\n';
+        }
     }
     f.close();
 }
@@ -311,6 +315,10 @@ bool LoadGameFromFile(RenderSystem *renderer)
             a.is_playing = LoadBool(f);
             a.loop = LoadBool(f);
         }
+        else if (line == "boss")
+        {
+            Boss &b = registry.bosses.emplace(e);
+        }
     }
 
     return true;
@@ -434,6 +442,58 @@ Entity createRangedEnemy(RenderSystem *renderer, vec2 position)
     registry.renderRequests.insert(
         entity,
         {TEXTURE_ASSET_ID::RANGED_ENEMY,
+         EFFECT_ASSET_ID::TEXTURED,
+         GEOMETRY_BUFFER_ID::SPRITE});
+
+    return entity;
+}
+
+// Create Boss Enemy
+Entity createBossEnemy(RenderSystem *renderer, vec2 position) {
+    auto entity = Entity();
+
+    // Store a reference to the potentially re-used mesh object (the value is stored in the resource cache)
+    Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
+    registry.meshPtrs.emplace(entity, &mesh);
+
+    // Setting enemy health
+    Health& bossHealth = registry.healths.emplace(entity);
+    bossHealth.value = 300;
+
+    // Initialize the motion
+    auto &motion = registry.motions.emplace(entity);
+    motion.angle = 0.f;
+    motion.velocity = {0.f, 0.f};
+    motion.position = position;
+
+    float multiplier = 0.75f;
+    // Setting initial values, scale is negative to make it face the opposite way
+    motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, multiplier * ENEMY_BB_HEIGHT});
+
+    // create an empty enemies component
+    registry.enemies.emplace(entity);
+
+    // Make more rapid attacks but more time in between
+    ReloadTime& bossReload = registry.reloadTimes.emplace(entity);
+
+    // Also a melee enemy
+    registry.meleeAttacks.emplace(entity);
+
+    registry.bosses.emplace(entity);
+
+    Animation &animation = registry.animations.emplace(entity);
+    animation.sprite_height = 32;
+    animation.sprite_width = 32;
+    animation.num_frames = 5;
+
+    // Add raycasting to the enemy
+    LineOfSight &raycast = registry.lightOfSight.emplace(entity);
+    raycast.ray_distance = 1000;
+    raycast.ray_width = ENEMY_BB_WIDTH;
+
+    registry.renderRequests.insert(
+        entity,
+        {TEXTURE_ASSET_ID::BOSS_ENEMY,
          EFFECT_ASSET_ID::TEXTURED,
          GEOMETRY_BUFFER_ID::SPRITE});
 

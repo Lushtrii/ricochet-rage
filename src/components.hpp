@@ -76,6 +76,10 @@ struct DamageEffect
     float max_show_time = 200;
 };
 
+struct Boss
+{
+};
+
 struct Wall
 {
 };
@@ -233,7 +237,8 @@ enum class TEXTURE_ASSET_ID
     PLAY_AGAIN_BUTTON = SAVE_QUIT_BUTTON + 1,
     CONTINUE_BUTTON = PLAY_AGAIN_BUTTON + 1,
     HEALTH_BAR = CONTINUE_BUTTON + 1,
-    TEXTURE_COUNT = HEALTH_BAR + 1
+    BOSS_ENEMY = HEALTH_BAR + 1,
+    TEXTURE_COUNT = BOSS_ENEMY + 1,
 };
 const int texture_count = (int)TEXTURE_ASSET_ID::TEXTURE_COUNT;
 

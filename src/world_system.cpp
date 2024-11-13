@@ -370,6 +370,8 @@ void WorldSystem::restart_game()
     registry.colors.insert(player, {1, 0.8f, 0.8f});
     update_player_move_dir();
 
+    createBossEnemy(renderer, vec2(window_width_px / 2 + 300, window_height_px / 2));
+
     // create the game walls
     createWall(renderer, vec2(window_width_px / 2.f, window_height_px / 2.f), vec2(100, 100), 0);
     createWall(renderer, vec2(window_width_px / 2.f + 100, window_height_px / 2.f), vec2(100, 100), 0);

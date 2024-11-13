@@ -36,6 +36,7 @@ public:
     ComponentContainer<DamageEffect> damageEffect;
     ComponentContainer<Animation> animations;
     ComponentContainer<HealthBar> healthBars;
+    ComponentContainer<Boss> bosses;
 
     // constructor that adds all containers for looping over them
     // IMPORTANT: Don't forget to add any newly added containers!
@@ -64,6 +65,7 @@ public:
         registry_list.push_back(&damageEffect);
         registry_list.push_back(&animations);
         registry_list.push_back(&healthBars);
+        registry_list.push_back(&bosses);
     }
 
     void clear_all_components()
