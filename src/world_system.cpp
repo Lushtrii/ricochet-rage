@@ -13,9 +13,36 @@
 
 #include "physics_system.hpp"
 
+
 const size_t TOTAL_NUM_ENEMIES = 40;      // total number of enemies in the game level
 const size_t MAX_NUM_ENEMIES = 10;        // maximum number of enemies on the screen
 const size_t ENEMY_SPAWN_DELAY_MS = 4000; // time between enemy spawns
+
+
+void WorldSystem::on_window_minimize(int minimized)
+{
+    int activeScreen = renderer->getActiveScreen();
+    
+    if (minimized && activeScreen == (int)SCREEN_ID::GAME_SCREEN)
+    {
+        m_isPaused = true;
+        renderer->setActiveScreen((int)SCREEN_ID::PAUSE_SCREEN);
+        renderer->flipActiveButtions((int)SCREEN_ID::PAUSE_SCREEN);
+    }
+}
+
+void WorldSystem::on_window_focus(int focused)
+{
+    int activeScreen = renderer->getActiveScreen();
+    
+    if (!focused && activeScreen == (int)SCREEN_ID::GAME_SCREEN)
+    {
+        m_isPaused = true;
+        renderer->setActiveScreen((int)SCREEN_ID::PAUSE_SCREEN);
+        renderer->flipActiveButtions((int)SCREEN_ID::PAUSE_SCREEN);
+    }
+}
+
 
 // create the underwater world
 WorldSystem::WorldSystem()
@@ -106,6 +133,17 @@ GLFWwindow *WorldSystem::create_window()
     glfwSetCursorPosCallback(window, cursor_pos_redirect);
     glfwSetMouseButtonCallback(window, click_callback);
 
+
+    auto minimize_callback = [](GLFWwindow *wnd, int minimized)
+    { ((WorldSystem *)glfwGetWindowUserPointer(wnd))->on_window_minimize(minimized); };
+    glfwSetWindowIconifyCallback(window, minimize_callback);
+
+    auto focus_callback = [](GLFWwindow *wnd, int focused)
+    { ((WorldSystem *)glfwGetWindowUserPointer(wnd))->on_window_focus(focused); };
+    glfwSetWindowFocusCallback(window, focus_callback);
+
+
+
     //////////////////////////////////////
     // Loading music and sounds with SDL
     if (SDL_Init(SDL_INIT_AUDIO) < 0)
@@ -171,6 +209,8 @@ bool WorldSystem::mouseOverBox(vec2 mousePos, Entity entity)
 bool WorldSystem::step(float elapsed_ms_since_last_update)
 {
 
+    
+
     static int frames = 0;
     static double prevTime = glfwGetTime();
     double currTime = glfwGetTime();
@@ -192,6 +232,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         glfwSetWindowTitle(window, title_ss.str().c_str());
     }
 
+   
     // Remove debug info from the last step
     while (registry.debugComponents.entities.size() > 0)
         registry.remove_all_components_of(registry.debugComponents.entities.back());
@@ -606,6 +647,8 @@ void WorldSystem::update_player_move_dir()
     motion.velocity = length(move_direction) >= 1 ? normalize(move_direction) * p.DEFAULT_SPEED : vec2(0, 0);
 }
 
+
+
 // On key callback
 void WorldSystem::on_key(int key, int, int action, int mod)
 {
@@ -613,6 +656,7 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     // key is of 'type' GLFW_KEY_
     // action can be GLFW_PRESS GLFW_RELEASE GLFW_REPEAT
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
     Motion &motion = registry.motions.get(player);
 
     if (!registry.deathTimers.has(player))
@@ -660,6 +704,7 @@ void WorldSystem::on_key(int key, int, int action, int mod)
         }
     }
 
+
     /* Entity mainMenuEntity; */
     // Exiting game on Esc
     if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE && !registry.deathTimers.has(player))
@@ -682,6 +727,13 @@ void WorldSystem::on_key(int key, int, int action, int mod)
         {
             m_isPaused = false;
             renderer->setActiveScreen((int)SCREEN_ID::GAME_SCREEN);
+
+            // button outline no longer stays after unpausing
+            for (Entity e : registry.clickables.entities) {
+                    Clickable& c = registry.clickables.get(e);
+                    c.isCurrentlyHoveredOver = false;
+                }
+            registry.renderRequests.remove(renderer->getHoverEntity());
         }
         renderer->flipActiveButtions(renderer->getActiveScreen());
     }

@@ -40,6 +40,12 @@ public:
     
     bool isPaused() const {return m_isPaused;};
 
+
+    void on_window_minimize(int minimized);
+    
+    void on_window_focus(int focused);
+
+
 private:
     void update_player_move_dir();
     // Input callback functions
