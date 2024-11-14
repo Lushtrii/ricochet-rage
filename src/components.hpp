@@ -29,14 +29,22 @@ struct Health
 {
     int value = 100;
 
-    void applyDamage(int bounces_remaining)
+    int applyDamage(int bounces_remaining, bool is_player_projectile)
     {
-        int damage = 30 - 10 * bounces_remaining;
-        if (damage < 0)
-            damage = 0;
-        value -= damage;
-        if (value < 0)
-            value = 0;
+        int damage;
+
+        if (bounces_remaining == 0)
+            damage = 50;
+        else if (bounces_remaining == 1)
+            damage = 25;
+        else
+            damage = 10;
+        
+        if (!is_player_projectile)
+            damage = 10;
+
+        value = max(0, value - damage);
+        return damage;
     }
 };
 
@@ -193,6 +201,35 @@ struct Animation {
     int sprite_height; 
     bool is_playing = true;
     bool loop = true;
+};
+
+// font character structure
+struct Character {
+	unsigned int TextureID;  // ID handle of the glyph texture
+	glm::ivec2   Size;       // Size of glyph
+	glm::ivec2   Bearing;    // Offset from baseline to left/top of glyph
+	unsigned int Advance;    // Offset to advance to next glyph
+	char character;
+};
+
+struct Text {
+    std::string text;
+    vec2 position;
+    glm::vec3 color;
+    float scale;
+    float timer = 0.2f;
+};
+
+struct TextRenderRequest {
+    std::string text;
+    float x;
+    float y;
+    float scale;
+    glm::vec3 color;
+    glm::mat4 transform;
+
+    TextRenderRequest(std::string t, float px, float py, float s, const glm::vec3 c, const glm::mat4 trans)
+        : text(t), x(px), y(py), scale(s), color(c), transform(trans) {}
 };
 
 /**

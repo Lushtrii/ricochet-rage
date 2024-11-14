@@ -240,6 +240,14 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     // Remove all health bars from last step
     while (registry.healthBars.entities.size() > 0)
         registry.remove_all_components_of(registry.healthBars.entities.back());
+    
+    for (Entity entity : registry.texts.entities) {
+        Text &text = registry.texts.get(entity);
+        text.timer -= elapsed_ms_since_last_update / 1000.f;
+        if (text.timer < 0) {
+            registry.remove_all_components_of(entity);
+        }
+    }
 
     // Removing out of screen entities
     auto &motions_registry = registry.motions;
@@ -273,10 +281,17 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         if (registry.healths.has(entity))
         {
             Health &health = registry.healths.get(entity);
+
+            float healthNormalized;
+            if (registry.bosses.has(entity)) {
+                healthNormalized = health.value / 300.f;
+            } else {
+                healthNormalized = health.value / 100.f;
+            }
             createHealthBar(
                 renderer,
                 {motion.position.x, motion.position.y - abs(motion.scale.y) / 2 - 15.f},
-                {abs(motion.scale.x) * health.value / 100, 8.f});
+                {abs(motion.scale.x) * healthNormalized, 8.f});
         }
     }
 
@@ -464,7 +479,22 @@ void WorldSystem::projectile_hit_character(Entity laser, Entity character)
 {
     Health &health = registry.healths.get(character);
     Projectile &projectile = registry.projectiles.get(laser);
-    health.applyDamage(projectile.bounces_remaining);
+    bool is_player_projectile = projectile.is_player_projectile;
+    int damage = health.applyDamage(projectile.bounces_remaining, is_player_projectile);
+
+    // Show damage effect
+    vec3 color;
+    float scale;
+
+    if (registry.players.has(character)) {
+        color = {1.f, 0.f, 0.133f};
+        scale = 1.5f;
+    } else {
+        color = {0.f, 1.f, 1.f};
+        scale = 1.f;
+    }
+    
+    createText(renderer, "-" + std::to_string(damage), registry.motions.get(character).position, scale, color);
 
     health_check(health, character);
 

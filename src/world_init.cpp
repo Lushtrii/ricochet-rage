@@ -611,3 +611,16 @@ Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 scale)
     registry.healthBars.emplace(entity);
     return entity;
 }
+
+Entity createText(RenderSystem *renderer, std::string text, vec2 position, float scale, vec3 color)
+{
+    Entity entity = Entity();
+
+    Text& screenText = registry.texts.emplace(entity);
+    screenText.text = text;
+    screenText.position = position;
+    screenText.scale = scale;
+    screenText.color = color;
+
+    return entity;
+}

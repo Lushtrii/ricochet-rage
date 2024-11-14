@@ -38,3 +38,5 @@ Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 size);
 Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_player_projectile, float speed = 500);
 
 Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position);
+
+Entity createText(RenderSystem *renderer, std::string text, vec2 position, float scale, vec3 color);

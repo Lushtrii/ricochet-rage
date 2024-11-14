@@ -37,6 +37,8 @@ public:
     ComponentContainer<Animation> animations;
     ComponentContainer<HealthBar> healthBars;
     ComponentContainer<Boss> bosses;
+    ComponentContainer<TextRenderRequest> textRenderRequests;
+    ComponentContainer<Text> texts;
 
     // constructor that adds all containers for looping over them
     // IMPORTANT: Don't forget to add any newly added containers!
@@ -66,6 +68,8 @@ public:
         registry_list.push_back(&animations);
         registry_list.push_back(&healthBars);
         registry_list.push_back(&bosses);
+        registry_list.push_back(&textRenderRequests);
+        registry_list.push_back(&texts);
     }
 
     void clear_all_components()

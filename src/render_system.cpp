@@ -3,10 +3,65 @@
 #include <SDL.h>
 #include <cmath>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include "common.hpp"
 #include "components.hpp"
 #include "tiny_ecs_registry.hpp"
 
+
+void RenderSystem::renderTextBulk(std::vector<TextRenderRequest>& requests)
+{
+    glUseProgram(m_font_shaderProgram);
+    glBindVertexArray(m_font_VAO);
+
+    for (const auto& request : requests)
+    {
+        GLint textColor_location = glGetUniformLocation(m_font_shaderProgram, "textColor");
+        glUniform3f(textColor_location, request.color.x, request.color.y, request.color.z);
+
+        GLint transformLoc = glGetUniformLocation(m_font_shaderProgram, "transform");
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(request.transform));
+
+        float currentX = request.x;
+        
+        for (const char c : request.text)
+        {
+            Character ch = m_ftCharacters[c];
+
+            float xpos = currentX + ch.Bearing.x * request.scale;
+            float ypos = request.y - (ch.Size.y - ch.Bearing.y) * request.scale;
+
+            float w = ch.Size.x * request.scale;
+            float h = ch.Size.y * request.scale;
+
+            float vertices[6][4] = {
+                { xpos,     ypos + h,   0.0f, 0.0f },
+                { xpos,     ypos,       0.0f, 1.0f },
+                { xpos + w, ypos,       1.0f, 1.0f },
+
+                { xpos,     ypos + h,   0.0f, 0.0f },
+                { xpos + w, ypos,       1.0f, 1.0f },
+                { xpos + w, ypos + h,   1.0f, 0.0f }
+            };
+
+            glBindTexture(GL_TEXTURE_2D, ch.TextureID);
+
+            glBindBuffer(GL_ARRAY_BUFFER, m_font_VBO);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            currentX += (ch.Advance >> 6) * request.scale;
+        }
+    }
+
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
 
 void RenderSystem::updateAnimations(float elapsed_ms) {
     float elapsed_seconds = elapsed_ms / 1000.f;
@@ -227,6 +282,7 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 	// Getting size of window
 	int w, h;
 	glfwGetFramebufferSize(window, &w, &h); // Note, this will be 2x the resolution given to glfwCreateWindow on retina displays
+	glBindVertexArray(vao);
 
 	// First render to the custom framebuffer
 	glBindFramebuffer(GL_FRAMEBUFFER, frame_buffer);
@@ -301,6 +357,28 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 
 	// Truely render to the screen
 	drawToScreen();
+
+	if (ss.activeScreen == (int)SCREEN_ID::GAME_SCREEN)
+	{
+		int w, h;
+		glfwGetWindowSize(window, &w, &h);
+
+		// Render text
+		glBindVertexArray(0);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		std::vector<TextRenderRequest> texts = {};
+
+		for (Entity entity: registry.texts.entities) {
+			Text &text = registry.texts.get(entity);
+			texts.emplace_back(text.text, text.position.x, h - text.position.y, text.scale, text.color, glm::mat4(4.0f));
+		}
+		
+		if (!texts.empty()) {
+			renderTextBulk(texts);
+		}
+	}
 
 	// flicker-free display with a double buffer
 	glfwSwapBuffers(window);

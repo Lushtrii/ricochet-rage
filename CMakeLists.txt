@@ -106,6 +106,10 @@ elseif (IS_OS_WINDOWS)
 	set(SDL2MIXER_DLL "${CMAKE_CURRENT_SOURCE_DIR}/ext/sdl/lib/SDL2_mixer-x86.dll")
     endif()
 
+    # FreeType - Windows-specific (x64 only)
+    set (FREETYPE_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/freetype/include")
+    set (FREETYPE_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/ext/freetype/release static/vs2015-2022/win64/freetype.lib")
+
     # Copy and rename dlls
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -147,10 +151,28 @@ if (NOT GLFW_FOUND OR NOT SDL2_FOUND)
    endif()
 endif()
 
+find_package(Freetype REQUIRED)
+
+if(TARGET Freetype AND NOT TARGET Freetype::Freetype)
+     add_library(Freetype::Freetype ALIAS freetype) # target freetype is defined by freetype-targets.cmake
+     # might need to add freetype to global scope if cmake errors here
+     # alternativly if the above does not work for you you can use
+     # add_library(Freetype::Freetype INTERFACE IMPORTED)
+     # target_link_libraries(Freetype::Freetype INTERFACE freetype)
+endif()
+ 
+if(NOT TARGET Freetype::Freetype)
+     # insert error here
+     # or create the target correctly (see cmakes newer FindFreetype.cmake)
+     message(FATAL_ERROR "Can't find FreeType (fonts)." )
+endif()
+ 
+ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ext/freetype/include")
+
 target_include_directories(${PROJECT_NAME} PUBLIC ${GLFW_INCLUDE_DIRS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${SDL2_INCLUDE_DIRS})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ${GLFW_LIBRARIES} ${SDL2_LIBRARIES} ${SDL2MIXER_LIBRARIES} glm::glm)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${GLFW_LIBRARIES} ${SDL2_LIBRARIES} ${SDL2MIXER_LIBRARIES} glm::glm ${FREETYPE_LIBRARY})
 
 # Needed to add this
 if(IS_OS_LINUX)

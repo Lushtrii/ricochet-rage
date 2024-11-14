@@ -34,10 +34,9 @@ int main()
         return EXIT_FAILURE;
     }
 
-
-
     // initialize the main systems
     renderer.init(window);
+    renderer.fontInit(window, PROJECT_SOURCE_DIR + std::string("data/fonts/Kenney_Pixel.ttf"), 35);
     world.init(&renderer);
     aiSystem.init(&renderer);
 
