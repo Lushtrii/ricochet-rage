@@ -34,7 +34,7 @@ int main()
         return EXIT_FAILURE;
     }
 
-    
+
 
     // initialize the main systems
     renderer.init(window);

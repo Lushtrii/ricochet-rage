@@ -161,6 +161,14 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 	std::vector<vec2> directions = {vec2(0, 1), vec2(0, -1), vec2(1, 0), vec2(-1, 0), normalize(vec2(-1, 1)), normalize(vec2(1,1)), normalize(vec2(-1,-1)), normalize(vec2(1,-1))};
 
 	Motion &enemyMotion = registry.motions.get(enemy);
+    float enemySpeed = 0.f;
+    if (registry.meleeAttacks.has(enemy)) {
+        enemySpeed = meleeEnemySpeed;
+    }
+    else {
+        enemySpeed = rangedEnemySpeed;
+    }
+
 	vec2 enemyPlayerDelta = enemyMotion.position - playerMotion.position;
 	// Stop enemy from colliding with player
 	if (length(enemyPlayerDelta) < minDistanceToPlayer) {
@@ -307,13 +315,21 @@ void AISystem::simple_chase_enemy(Entity &enemy, Motion &playersMotion)
 	if (registry.motions.has(enemy))
 	{
 		Motion &enemyMotion = registry.motions.get(enemy);
+        float enemySpeed = 0.f;
+        if (registry.meleeAttacks.has(enemy)) {
+            enemySpeed = meleeEnemySpeed;
+        }
+        else {
+            enemySpeed = rangedEnemySpeed;
+        }
+
 		for (Entity &wall: registry.walls.entities) {
 			Motion& wallMotion = registry.motions.get(wall);
 			vec2 wallEnemyDelta = enemyMotion.position - wallMotion.position;
 			// Go directly at the player
 			vec2 angleVector = -normalize(enemyMotion.position - playersMotion.position + followingConstant * playersMotion.velocity);
 			float angle = atan2(angleVector.y, angleVector.x);
-			enemyMotion.velocity = angleVector * enemySpeed;
+            enemyMotion.velocity = angleVector * enemySpeed;
 			enemyMotion.angle = angle;
 
 			if (length(abs(wallEnemyDelta)) < distanceToWalls) {

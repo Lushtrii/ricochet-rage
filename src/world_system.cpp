@@ -146,24 +146,25 @@ void WorldSystem::init(RenderSystem *renderer_arg)
 
     // Set all states to default
     saveFileExists = renderer->doesSaveFileExist();
-    if (saveFileExists) {
+    if (saveFileExists)
+    {
         LoadGameFromFile(renderer_arg);
         init_values();
     }
-    else 
+    else
     {
         restart_game();
     }
 }
 
-bool WorldSystem::mouseOverBox(vec2 mousePos, Entity entity) {
+bool WorldSystem::mouseOverBox(vec2 mousePos, Entity entity)
+{
     Motion m = registry.motions.get(entity);
-    float minX = m.position.x - abs(m.scale.x)/2;
-    float maxX = m.position.x + abs(m.scale.x)/2;
-    float minY = m.position.y - abs(m.scale.y)/2;
-    float maxY = m.position.y + abs(m.scale.y)/2;
-    return (minX <= mousePos.x) && (mousePos.x <= maxX)
-        && (minY <= mousePos.y) && (mousePos.y <= maxY);
+    float minX = m.position.x - abs(m.scale.x) / 2;
+    float maxX = m.position.x + abs(m.scale.x) / 2;
+    float minY = m.position.y - abs(m.scale.y) / 2;
+    float maxY = m.position.y + abs(m.scale.y) / 2;
+    return (minX <= mousePos.x) && (mousePos.x <= maxX) && (minY <= mousePos.y) && (mousePos.y <= maxY);
 }
 
 // Update our game world
@@ -194,7 +195,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     // Remove debug info from the last step
     while (registry.debugComponents.entities.size() > 0)
         registry.remove_all_components_of(registry.debugComponents.entities.back());
-    
+
     // Remove all health bars from last step
     while (registry.healthBars.entities.size() > 0)
         registry.remove_all_components_of(registry.healthBars.entities.back());
@@ -216,7 +217,8 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     }
 
     // Check if the health of enemies or player is 0
-    for (Entity &entity: registry.healths.entities) {
+    for (Entity &entity : registry.healths.entities)
+    {
         Health &health = registry.healths.get(entity);
         health_check(health, entity);
     }
@@ -227,40 +229,42 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         Motion &motion = motions_registry.components[i];
         Entity entity = motions_registry.entities[i];
 
-        if (registry.healths.has(entity)) {
-            Health &health = registry.healths.get(entity);            
+        if (registry.healths.has(entity))
+        {
+            Health &health = registry.healths.get(entity);
             createHealthBar(
                 renderer,
                 {motion.position.x, motion.position.y - abs(motion.scale.y) / 2 - 15.f},
-                {abs(motion.scale.x) * health.value / 100, 8.f}
-            );
+                {abs(motion.scale.x) * health.value / 100, 8.f});
         }
     }
 
     auto &damageEffects = registry.damageEffect;
     // Check for damage effect
-    if (damageEffects.has(player)) {
+    if (damageEffects.has(player))
+    {
         DamageEffect &damageEffect = damageEffects.get(player);
-        if (damageEffect.is_attacked) {
+        if (damageEffect.is_attacked)
+        {
             damageEffect.damage_show_time -= elapsed_ms_since_last_update;
-            if (registry.colors.has(player)) {
+            if (registry.colors.has(player))
+            {
                 vec3 &playerColor = registry.colors.get(player);
                 // make red
                 playerColor = {1.0, 0.0, 0.0};
-                if (damageEffect.damage_show_time < 0) {
+                if (damageEffect.damage_show_time < 0)
+                {
                     damageEffect.damage_show_time = damageEffect.max_show_time;
                     playerColor = {1, 0.8f, 0.8f};
                     damageEffect.is_attacked = false;
                 }
             }
-
         }
     }
 
-
     // spawn new enemies
     next_enemy_spawn -= elapsed_ms_since_last_update * current_speed;
-    if (num_enemies_seen < (int) TOTAL_NUM_ENEMIES && registry.enemies.components.size() <= MAX_NUM_ENEMIES && next_enemy_spawn < 0.f)
+    if (num_enemies_seen < (int)TOTAL_NUM_ENEMIES && registry.enemies.components.size() <= MAX_NUM_ENEMIES && next_enemy_spawn < 0.f)
     {
         num_enemies_seen++;
         next_enemy_spawn = (ENEMY_SPAWN_DELAY_MS / 2) + uniform_dist(rng) * (ENEMY_SPAWN_DELAY_MS / 2);
@@ -277,11 +281,13 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
 
             // Check if it collides with the player
             Motion &playerMotion = registry.motions.get(player);
-            if (length(playerMotion.position - spawn_pos) < 150.0f) {
+            if (length(playerMotion.position - spawn_pos) < 150.0f)
+            {
                 is_valid_spawn = false;
             }
 
-            for (Entity entity : registry.walls.entities) {
+            for (Entity entity : registry.walls.entities)
+            {
                 Motion &wall_motion = registry.motions.get(entity);
                 if (length(wall_motion.position - spawn_pos) < 100.f)
                 {
@@ -303,7 +309,8 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     }
 
     // Win condition
-    if (num_enemies_seen == TOTAL_NUM_ENEMIES && (int) registry.enemies.entities.size() == 0) {
+    if (num_enemies_seen == TOTAL_NUM_ENEMIES && (int)registry.enemies.entities.size() == 0)
+    {
         renderer->setActiveScreen((int)SCREEN_ID::WIN_SCREEN);
         renderer->flipActiveButtions(renderer->getActiveScreen());
         m_isPaused = true;
@@ -311,7 +318,6 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         restart_game();
         return true;
     }
-
 
     // Processing the player state
     assert(registry.screenStates.components.size() <= 1);
@@ -321,7 +327,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     {
         registry.deathTimers.remove(entity);
         screen.darken_screen_factor = 0;
-        renderer->setActiveScreen((int) SCREEN_ID::DEATH_SCREEN);
+        renderer->setActiveScreen((int)SCREEN_ID::DEATH_SCREEN);
         renderer->flipActiveButtions(renderer->getActiveScreen());
         std::remove("../Save1.data");
         m_isPaused = true;
@@ -354,9 +360,11 @@ void WorldSystem::restart_game()
     // All that have a motion, we could also iterate over all fish, eels, ... but that would be more cumbersome
     //
     assert(registry.motions.size() > 0 && "Motions registry does not contain items");
-    for (int i = (int)registry.motions.size() - 1; i >= 0; i--) {
+    for (int i = (int)registry.motions.size() - 1; i >= 0; i--)
+    {
         Entity e = registry.motions.entities[i];
-        if (!registry.clickables.has(e) && e != renderer->getHoverEntity()) {
+        if (!registry.clickables.has(e) && e != renderer->getHoverEntity())
+        {
             registry.remove_all_components_of(e);
         }
     }
@@ -429,10 +437,11 @@ void WorldSystem::health_check(Health &health, const Entity &character)
     {
         if (registry.players.has(character))
         {
-            if (registry.deathTimers.size() < 1) {
+            if (registry.deathTimers.size() < 1)
+            {
                 registry.deathTimers.emplace(character);
-                registry.motions.get(character).velocity = vec2(0,0);
-            
+                registry.motions.get(character).velocity = vec2(0, 0);
+
                 Animation &player_anim = registry.animations.get(character);
                 player_anim.current_frame = 0;
                 player_anim.is_playing = false;
@@ -450,14 +459,15 @@ void WorldSystem::health_check(Health &health, const Entity &character)
         }
     }
 }
-
+int run = 0;
 // Compute collisions between entities
 void WorldSystem::handle_collisions(float elapsed_ms)
 {
     elapsed_ms += 0.f; // to hide errors
     // Loop over all collisions detected by the physics system
-    std::unordered_map<unsigned int, bool> handled_bullets; 
+    std::unordered_map<unsigned int, std::pair<Entity, Entity>> handled_bullets;
     auto &collisionsRegistry = registry.collisions;
+    run++;
     for (uint i = 0; i < collisionsRegistry.components.size(); i++)
     {
         // The entity and its collider
@@ -485,45 +495,25 @@ void WorldSystem::handle_collisions(float elapsed_ms)
         // handle collisions between projectiles and walls
         else if (registry.projectiles.has(entity) && registry.walls.has(entity_other))
         {
-            if (handled_bullets.count(entity) == 0) {
-                handled_bullets.emplace(entity, true);
-                    Projectile &projectile = registry.projectiles.get(entity);
-                    if (projectile.bounces_remaining-- == 0)
-                    {
-                        registry.remove_all_components_of(entity);
-                        continue;
-                    }
-                    else
-                    {
-                        TEXTURE_ASSET_ID id = TEXTURE_ASSET_ID::PROJECTILE_CHARGED;
-                        if (projectile.bounces_remaining == 0)
-                        {
-                            id = TEXTURE_ASSET_ID::PROJECTILE_SUPER_CHARGED;
-                        }
-                        registry.renderRequests.get(entity).used_texture = id;
-                    }
+            if (handled_bullets.count(entity) == 0)
+            {
+                std::pair<Entity, Entity> p(entity, entity_other);
+                handled_bullets.emplace(entity, p);
+            }
+            else
+            {
+                Motion &projMotion = registry.motions.get(entity);
+                Motion &wallMotion = registry.motions.get(entity_other);
+                Motion &prevWallMotion = registry.motions.get(handled_bullets[entity].second);
 
-                    Motion &projMotion = registry.motions.get(entity);
-                    Motion &wallMotion = registry.motions.get(entity_other);
-                    vec2 normal = vec2(1,0);
-                    vec2 normal2 = vec2(0,1);
-                    
-                    // chooses which wall normal to reflect off of based on projectile collision direction
-                    projMotion.position -= projMotion.last_physic_move; // move projectile outside of wall collision
-                    float dist = length(projMotion.last_physic_move);
-                    vec2 reflectedVelocity = reflect(projMotion.velocity, normal);
-                    projMotion.position += normalize(reflectedVelocity) * dist;
-        
-                    if (PhysicsSystem::collides(projMotion, wallMotion)) {
-                        projMotion.position -= normalize(reflectedVelocity) * dist;
-                        reflectedVelocity = reflect(projMotion.velocity, normal2);
-                        projMotion.angle = M_PI - projMotion.angle;
-                    }
-                    else {
-                        projMotion.angle = -projMotion.angle;
-                    }
-                    
-                    projMotion.velocity = reflectedVelocity;
+                float prevDiff = distance(projMotion.position, prevWallMotion.position);
+                float currDiff = distance(projMotion.position, wallMotion.position);
+
+                if (currDiff < prevDiff)
+                {
+                    std::pair<Entity, Entity> p(entity, entity_other);
+                    handled_bullets[entity] = p;
+                }
             }
         }
 
@@ -539,11 +529,64 @@ void WorldSystem::handle_collisions(float elapsed_ms)
                 }
             }
 
-            if (registry.projectiles.has(entity_other) && registry.projectiles.get(entity_other).is_player_projectile)
+            // Test for projectile hitting enemy
+
+            if (registry.projectiles.has(entity_other))
             {
-                projectile_hit_character(entity_other, entity);
+                Projectile p = registry.projectiles.get(entity_other);
+                // Needs to have bounced once before enemy can be hit
+                if (p.is_player_projectile)
+                {
+                    projectile_hit_character(entity_other, entity);
+                }
             }
         }
+    }
+
+    for (auto &it : handled_bullets)
+    {
+        Entity entity = it.second.first;
+        if (!registry.projectiles.has(entity))
+            continue;
+
+        Entity entity_other = it.second.second;
+        Projectile &projectile = registry.projectiles.get(entity);
+        if (projectile.bounces_remaining-- == 0)
+        {
+            registry.remove_all_components_of(entity);
+            continue;
+        }
+        else
+        {
+            TEXTURE_ASSET_ID id = TEXTURE_ASSET_ID::PROJECTILE_CHARGED;
+            if (projectile.bounces_remaining == 0)
+            {
+                id = TEXTURE_ASSET_ID::PROJECTILE_SUPER_CHARGED;
+            }
+            registry.renderRequests.get(entity).used_texture = id;
+        }
+
+        Motion &projMotion = registry.motions.get(entity);
+        Motion &wallMotion = registry.motions.get(entity_other);
+        vec2 normal;
+
+        // chooses which wall normal to reflect off of based on projectile collision direction
+        projMotion.position -= projMotion.last_physic_move; // move projectile outside of wall collision
+        vec2 diffVec = projMotion.position - wallMotion.position;
+        vec2 size = projMotion.scale + wallMotion.scale;
+
+        if (abs(diffVec.x / size.x) > abs(diffVec.y / size.y))
+        {
+            normal = vec2(1, 0);
+            projMotion.angle = (2 * M_PI) - projMotion.angle;
+        }
+        else
+        {
+            normal = vec2(0, 1);
+            projMotion.angle = -projMotion.angle - M_PI;
+        }
+
+        projMotion.velocity = reflect(projMotion.velocity, normal);
     }
 
     // Remove all collisions from this simulation step
@@ -558,9 +601,9 @@ bool WorldSystem::is_over() const
 
 void WorldSystem::update_player_move_dir()
 {
-    const float player_speed = 100.f;
+    Player p = registry.players.get(player);
     Motion &motion = registry.motions.get(player);
-    motion.velocity = length(move_direction) >= 1 ? normalize(move_direction) * player_speed : vec2(0, 0);
+    motion.velocity = length(move_direction) >= 1 ? normalize(move_direction) * p.DEFAULT_SPEED : vec2(0, 0);
 }
 
 // On key callback
@@ -611,10 +654,10 @@ void WorldSystem::on_key(int key, int, int action, int mod)
         {
             motion.last_move_direction = normalize(move_direction);
         }
-        if (!registry.deathTimers.has(player)) {
+        if (!registry.deathTimers.has(player))
+        {
             update_player_move_dir();
         }
-        
     }
 
     /* Entity mainMenuEntity; */
@@ -622,22 +665,25 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE && !registry.deathTimers.has(player))
     {
         int activeScreen = renderer->getActiveScreen();
-        if (activeScreen == (int) SCREEN_ID::MAIN_MENU || activeScreen == (int) SCREEN_ID::DEATH_SCREEN) {
+        if (activeScreen == (int)SCREEN_ID::MAIN_MENU || activeScreen == (int)SCREEN_ID::DEATH_SCREEN)
+        {
             glfwSetWindowShouldClose(window, true);
         }
-        else if (activeScreen == (int)SCREEN_ID::TUTORIAL_SCREEN) {
+        else if (activeScreen == (int)SCREEN_ID::TUTORIAL_SCREEN)
+        {
             renderer->setActiveScreen((int)SCREEN_ID::MAIN_MENU);
         }
-        else if (activeScreen == (int)SCREEN_ID::GAME_SCREEN){
+        else if (activeScreen == (int)SCREEN_ID::GAME_SCREEN)
+        {
             m_isPaused = !m_isPaused;
             renderer->setActiveScreen((int)SCREEN_ID::PAUSE_SCREEN);
         }
-        else if (activeScreen == (int) SCREEN_ID::PAUSE_SCREEN) {
+        else if (activeScreen == (int)SCREEN_ID::PAUSE_SCREEN)
+        {
             m_isPaused = false;
             renderer->setActiveScreen((int)SCREEN_ID::GAME_SCREEN);
         }
         renderer->flipActiveButtions(renderer->getActiveScreen());
-        
     }
 
     // Resetting game
@@ -679,29 +725,36 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     int activeScreen = renderer->getActiveScreen();
     Entity hoverEntity = renderer->getHoverEntity();
-    if (activeScreen == (int)SCREEN_ID::TUTORIAL_SCREEN) {
+    if (activeScreen == (int)SCREEN_ID::TUTORIAL_SCREEN)
+    {
         return;
     }
-    else if (activeScreen != (int)SCREEN_ID::GAME_SCREEN) {
-        for (Entity e : registry.clickables.entities) {
+    else if (activeScreen != (int)SCREEN_ID::GAME_SCREEN)
+    {
+        for (Entity e : registry.clickables.entities)
+        {
             bool mouseOver = mouseOverBox(mouse_position, e);
-            Clickable& c = registry.clickables.get(e);
-            if (c.screenTiedTo != activeScreen) {
+            Clickable &c = registry.clickables.get(e);
+            if (c.screenTiedTo != activeScreen)
+            {
                 continue;
             }
-            if (mouseOver) {
+            if (mouseOver)
+            {
                 c.isCurrentlyHoveredOver = true;
-                Motion& clickableMotion = registry.motions.get(e);
-                Motion& hoverMotion = registry.motions.get(hoverEntity);
+                Motion &clickableMotion = registry.motions.get(e);
+                Motion &hoverMotion = registry.motions.get(hoverEntity);
                 hoverMotion.position = clickableMotion.position;
-                }
-            else {
-                c.isCurrentlyHoveredOver = false;
-                }
             }
+            else
+            {
+                c.isCurrentlyHoveredOver = false;
+            }
+        }
     }
 
-    else {
+    else
+    {
         if (registry.deathTimers.has(player))
             return;
         Motion &motion = registry.motions.get(player);
@@ -714,28 +767,38 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
 
 void WorldSystem::on_mouse_click(int button, int action, int mods)
 {
-    if (action == GLFW_PRESS) {
+    if (action == GLFW_PRESS)
+    {
         int activeScreen = renderer->getActiveScreen();
-        if (activeScreen == (int) SCREEN_ID::TUTORIAL_SCREEN) {
+        if (activeScreen == (int)SCREEN_ID::TUTORIAL_SCREEN)
+        {
             return;
         }
-        else if (activeScreen != (int)SCREEN_ID::GAME_SCREEN) {
-            for (Entity e : registry.clickables.entities) {
-                Clickable& c = registry.clickables.get(e);
-                if (c.screenTiedTo != activeScreen) {
+        else if (activeScreen != (int)SCREEN_ID::GAME_SCREEN)
+        {
+            for (Entity e : registry.clickables.entities)
+            {
+                Clickable &c = registry.clickables.get(e);
+                if (c.screenTiedTo != activeScreen)
+                {
                     continue;
                 }
-                if (c.isCurrentlyHoveredOver) {
-                    if (c.screenGoTo == (int)SCREEN_ID::EXIT_SCREEN) {
-                        if (c.textureID == (int)TEXTURE_ASSET_ID::SAVE_QUIT_BUTTON) {
-                        SaveGameToFile(renderer);
+                if (c.isCurrentlyHoveredOver)
+                {
+                    if (c.screenGoTo == (int)SCREEN_ID::EXIT_SCREEN)
+                    {
+                        if (c.textureID == (int)TEXTURE_ASSET_ID::SAVE_QUIT_BUTTON)
+                        {
+                            SaveGameToFile(renderer);
                         }
                         glfwSetWindowShouldClose(window, true);
                     }
-                    else {
+                    else
+                    {
                         renderer->setActiveScreen(c.screenGoTo);
                         renderer->flipActiveButtions(c.screenGoTo);
-                        if (c.screenGoTo == (int)SCREEN_ID::GAME_SCREEN) {
+                        if (c.screenGoTo == (int)SCREEN_ID::GAME_SCREEN)
+                        {
                             m_isPaused = false;
                         }
                     }
@@ -743,16 +806,15 @@ void WorldSystem::on_mouse_click(int button, int action, int mods)
                     registry.renderRequests.remove(renderer->getHoverEntity());
                 }
             }
-
         }
-        else {
+        else
+        {
             Motion &motion = registry.motions.get(player);
             if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !registry.deathTimers.has(player))
             {
                 Mix_PlayChannel(-1, laser_shot_sound, 0);
                 createProjectile(renderer, motion.position, motion.angle, true);
             }
-
         }
     }
 }

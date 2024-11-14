@@ -8,6 +8,7 @@
 // Player component
 struct Player
 {
+    float DEFAULT_SPEED = 200.f;
 };
 
 enum class EnemyState
@@ -58,7 +59,8 @@ struct ReloadTime
 
 struct Projectile
 {
-    int bounces_remaining = 2;
+    static const int MAX_BOUNCES = 2;
+    int bounces_remaining = MAX_BOUNCES;
     int is_player_projectile = true;
 };
 

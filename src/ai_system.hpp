@@ -27,7 +27,8 @@ private:
     bool line_of_sight_check(Entity &enemy, Motion &playerMotion);
     bool line_box_collision(Motion &enemyMotion, Motion &obstacleMotion, vec2 &directionDelta);
 
-    float const enemySpeed = 50.f;
+    const float rangedEnemySpeed = 50.f;
+    const float meleeEnemySpeed = 100.f;
 	float const followingConstant = 0.4f;
 	float const distanceToWalls = 150.0f;
     float const aggroDistance = 400.0f;
