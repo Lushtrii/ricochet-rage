@@ -11,6 +11,9 @@
 #include "components.hpp"
 #include "tiny_ecs_registry.hpp"
 
+#include "distort.hpp"
+
+extern DistortToggle toggle;
 
 void RenderSystem::renderTextBulk(std::vector<TextRenderRequest>& requests)
 {
@@ -224,6 +227,18 @@ void RenderSystem::drawToScreen()
 	// Setting shaders
 	// get the water texture, sprite mesh, and program
 	glUseProgram(effects[(GLuint)EFFECT_ASSET_ID::WATER]);
+
+
+	GLuint distortion_on = glGetUniformLocation(effects[(GLuint)EFFECT_ASSET_ID::WATER], "distort_on");
+
+    if (toggle == DISTORT_ON) {
+        glUniform1i(distortion_on, 1);  
+    } else {
+        glUniform1i(distortion_on, 0); 
+    }
+
+
+
 	gl_has_errors();
 	// Clearing backbuffer
 	int w, h;

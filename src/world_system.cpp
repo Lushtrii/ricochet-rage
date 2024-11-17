@@ -13,6 +13,10 @@
 
 #include "physics_system.hpp"
 
+#include "distort.hpp"
+
+DistortToggle toggle;
+
 
 const size_t TOTAL_NUM_ENEMIES = 40;      // total number of enemies in the game level
 const size_t MAX_NUM_ENEMIES = 10;        // maximum number of enemies on the screen
@@ -783,6 +787,20 @@ void WorldSystem::on_key(int key, int, int action, int mod)
             debugging.in_debug_mode = false;
         else
             debugging.in_debug_mode = true;
+    }
+
+
+    if (action == GLFW_PRESS) {
+        if (key == GLFW_KEY_2) {
+            toggle = DISTORT_ON;
+           
+			
+        }
+        else if (key == GLFW_KEY_1) {
+            toggle = DISTORT_OFF;
+            
+			
+        }
     }
 
     // Control the current speed with `<` `>`
