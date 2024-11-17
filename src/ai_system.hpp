@@ -14,10 +14,12 @@ public:
 	void init(RenderSystem *renderer_arg);
     void step(float elapsed_ms);
 
+    void teleport_boss(Entity &enemy, Motion &playerMotion, EnemyState &enemyState);
+
 private:
     void simple_chase(float elapsed_ms, Motion &playersMotion);
     void simple_chase_enemy(Entity &curr_entity, Motion &playersMotion);
-    void stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_ms, Motion &playerMotion);
+    void stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_ms, Motion &playerMotion, bool boss);
     void single_shot_enemy(Motion &enemyMotion, Motion &playerMotion, ReloadTime &counter);
     void shotgun_enemy(Motion &enemyMotion, Motion &playerMotion, ReloadTime &counter);
     void context_chase(Entity &enemy,  Motion &playerMotion);
@@ -26,6 +28,7 @@ private:
     void stop_and_melee(Entity &enemy, MeleeAttack &counter, float elapsed_ms, Motion &playerMotion, Entity &playerEntity);
     bool line_of_sight_check(Entity &enemy, Motion &playerMotion);
     bool line_box_collision(Motion &enemyMotion, Motion &obstacleMotion, vec2 &directionDelta);
+    vec2 quadratic_bezier(float t, float max_time);
 
     const float rangedEnemySpeed = 50.f;
     const float meleeEnemySpeed = 100.f;
@@ -42,6 +45,7 @@ private:
     const float distanceBetweenEnemies = 30.0f;
     const float los_increment = 50.0f;
     const float shotgun_angle = M_PI/8.0f;
+    const float tp_to_player_range = 300.0f;
 
     // C++ random number generator
     std::default_random_engine rng;

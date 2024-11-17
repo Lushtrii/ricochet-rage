@@ -16,7 +16,8 @@ enum class EnemyState
     ROAMING = 0,
     PURSUING = ROAMING + 1,
     AVOIDWALL = PURSUING + 1,
-    ATTACK = AVOIDWALL + 1
+    ATTACK = AVOIDWALL + 1,
+    TELEPORTING = ATTACK + 1
 };
 
 // anything that is deadly to the player
@@ -88,6 +89,18 @@ struct DamageEffect
 
 struct Boss
 {
+};
+
+struct Teleporter
+{
+    float animation_time = 1000.0f;
+    float max_teleport_time = 1000.0f;
+    vec2 prevScale = vec2(0.0f, 0.0f);
+};
+struct Teleporting
+{
+    float starting_time = 0.0f;
+    float max_time = 1000.0f;
 };
 
 struct Wall

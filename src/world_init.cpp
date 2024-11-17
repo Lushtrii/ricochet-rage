@@ -153,6 +153,21 @@ void SaveGameToFile(RenderSystem* renderer)
         {
             f << "boss" << '\n';
         }
+        if (registry.teleporters.has(e)) 
+        {
+            Teleporter &t = registry.teleporters.get(e);
+            f << "teleporter" << "\n";
+            f << t.animation_time << "\n";
+            f << t.max_teleport_time << "\n";
+            f << t.prevScale.x << "\n" << t.prevScale.y << "\n";
+        }
+        if (registry.teleporting.has(e)) 
+        {
+            Teleporting &t = registry.teleporting.get(e);
+            f << "teleporting" << "\n";
+            f << t.starting_time << "\n";
+            f << t.max_time << "\n";
+        }
     }
     f.close();
 }
@@ -319,6 +334,19 @@ bool LoadGameFromFile(RenderSystem *renderer)
         {
             Boss &b = registry.bosses.emplace(e);
         }
+        else if (line == "teleporter")
+        {
+            Teleporter &t = registry.teleporters.emplace(e);
+            t.animation_time = LoadFloat(f);
+            t.max_teleport_time = LoadFloat(f);
+            t.prevScale = vec2(LoadFloat(f), LoadFloat(f));
+        }
+        else if (line == "teleporting") 
+        {
+            Teleporting &t = registry.teleporting.emplace(e);
+            t.starting_time = LoadFloat(f);
+            t.max_time = LoadFloat(f);
+        }
     }
 
     return true;
@@ -478,6 +506,7 @@ Entity createBossEnemy(RenderSystem *renderer, vec2 position) {
 
     // Also a melee enemy
     registry.meleeAttacks.emplace(entity);
+    registry.teleporters.emplace(entity);
 
     registry.bosses.emplace(entity);
 

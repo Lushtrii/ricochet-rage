@@ -73,19 +73,80 @@ void AISystem::step(float elapsed_ms)
 					enemyState = EnemyState::PURSUING;
 				} else {
 					ReloadTime &counter = registry.reloadTimes.get(enemy);
-					stop_and_shoot(enemy, counter, elapsed_ms, playerMotion);
+					stop_and_shoot(enemy, counter, elapsed_ms, playerMotion, true);
 				}
 			}
 			else if (registry.reloadTimes.has(enemy)) {
 				ReloadTime &counter = registry.reloadTimes.get(enemy);
-				stop_and_shoot(enemy, counter, elapsed_ms, playerMotion);
+				stop_and_shoot(enemy, counter, elapsed_ms, playerMotion, false);
 			} else if (registry.meleeAttacks.has(enemy)) {
 				MeleeAttack &meleeAttack = registry.meleeAttacks.get(enemy);
 				stop_and_melee(enemy, meleeAttack, elapsed_ms, playerMotion, playerEntity);
 				enemyState = EnemyState::PURSUING;
 			}
+		} else if (enemyState == EnemyState::TELEPORTING) {
+			if (registry.bosses.has(enemy)) {
+				Teleporter& bossTeleport = registry.teleporters.get(enemy);
+				Motion& enemyMotion = registry.motions.get(enemy);
+				if (!registry.teleporting.has(enemy)) {
+					Teleporting& teleporting = registry.teleporting.emplace(enemy);
+					teleporting.starting_time = 0;
+					bossTeleport.prevScale = enemyMotion.scale;
+				}
+				enemyMotion.velocity = vec2(0.0f, 0.0f);
+				if (bossTeleport.animation_time > 0) {
+					bossTeleport.animation_time -= elapsed_ms;
+				} else {
+					teleport_boss(enemy, playerMotion, enemyState);
+					// Restore enemy motion
+					enemyMotion.scale = bossTeleport.prevScale;
+					registry.teleporting.remove(enemy);
+					bossTeleport.animation_time = bossTeleport.max_teleport_time;
+				}
+            }
 		}
 	}
+
+	// Deal with teleportation animation with Bezier Curve
+	for (Entity& teleporting: registry.teleporting.entities) {
+		Motion &bossMotion = registry.motions.get(teleporting);
+		Teleporting &teleportingComp = registry.teleporting.get(teleporting);
+		bossMotion.scale = bossMotion.scale * quadratic_bezier(teleportingComp.starting_time, teleportingComp.max_time);
+		teleportingComp.starting_time += elapsed_ms;
+	}
+}
+
+void AISystem::teleport_boss(Entity &enemy, Motion &playerMotion, EnemyState &enemyState)
+{
+    bool is_valid_spawn = false;
+    vec2 spawn_pos;
+    Motion &enemyMotion = registry.motions.get(enemy);
+
+    while (!is_valid_spawn)
+    {
+        spawn_pos = {
+            150.f + uniform_dist(rng) * (window_width_px - 300.f),
+            150.f + uniform_dist(rng) * (window_height_px - 300.f)};
+        is_valid_spawn = true;
+
+        // Check if it collides with the player
+        if (length(playerMotion.position - spawn_pos) < 100.0f)
+        {
+            is_valid_spawn = false;
+        }
+
+        for (Entity entity : registry.walls.entities)
+        {
+            Motion &wall_motion = registry.motions.get(entity);
+            if (length(wall_motion.position - spawn_pos) < 100.f)
+            {
+                is_valid_spawn = false;
+                break;
+            }
+        }
+    }
+    enemyMotion.position = spawn_pos;
+    enemyState = EnemyState::ATTACK;
 }
 
 // Pursuing logic for a ranged enemy, including shoot
@@ -116,9 +177,13 @@ void AISystem::boss_enemy_pursue(Entity &enemy, float elapsed_ms, Motion &player
     context_chase(enemy, playerMotion);
 
 	Motion& enemyMotion = registry.motions.get(enemy);
+	int attackRand = rand() % 2;
+	if (attackRand == 0 && counter.counter_ms < 0) {
+		enemyState = EnemyState::TELEPORTING;
+	}
     if ((!line_of_sight_check(enemy, playerMotion) && counter.counter_ms < 0) || length(playerMotion.position - enemyMotion.position) < meleeDistance)
     {
-        enemyState = EnemyState::ATTACK;
+		enemyState = EnemyState::ATTACK;
     }
 }
 
@@ -145,8 +210,11 @@ bool AISystem::line_box_collision(Motion &enemyMotion, Motion &obstacleMotion, v
 	float right = obstacleMotion.position.x + bounding_box.x/2;
 	float bot = obstacleMotion.position.y + bounding_box.y/2;
 	float top = obstacleMotion.position.y - bounding_box.y/2;
-	while (length(curr) < length(directionDelta)) {
+	// Added to prevent infinite loops
+	int tries = 0;
+	while ((length(curr) < length(directionDelta)) && tries < 1000) {
 		curr += increment;
+		tries += 1;
 		vec2 curr_pos = enemyMotion.position + curr;
 		if (curr_pos.x > left && curr_pos.x < right && curr_pos.y > top && curr_pos.y < bot) {
 			return true;
@@ -244,13 +312,12 @@ void AISystem::stop_and_melee(Entity &enemy, MeleeAttack &counter, float elapsed
 				}
 			}
 			counter.windup = counter.windupMax;
-
 		}
 	}
 }
 
 // Stops and shoots at the enemy at a certain rate
-void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_ms, Motion &playerMotion)
+void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_ms, Motion &playerMotion, bool boss)
 {
     if (registry.motions.has(enemy))
     {
@@ -260,7 +327,7 @@ void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_
         enemyMotion.velocity = vec2(0.0f, 0.0f);
 
 		if (counter.shoot_rate < 0) {
-			if (registry.bosses.has(enemy)) {
+			if (boss) {
 				shotgun_enemy(enemyMotion, playerMotion, counter);
 			} 
 			else 
@@ -272,6 +339,7 @@ void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_
         if (counter.take_aim_ms < 0)
         {
 			Enemy &enemyState = registry.enemies.get(enemy);
+			counter.shoot_rate = shoot_rate;
             counter.counter_ms = original_ms;
             counter.take_aim_ms = take_aim_ms;
 			enemyState.enemyState = EnemyState::PURSUING;
@@ -293,6 +361,8 @@ void AISystem::shotgun_enemy(Motion &enemyMotion, Motion &playerMotion, ReloadTi
 {
     vec2 angleVector = normalize(enemyMotion.position - playerMotion.position);
     float angle = atan2(angleVector.y, angleVector.x);
+	float aim_angle = atan2(-angleVector.y, -angleVector.x);
+	enemyMotion.angle = aim_angle;
     createProjectile(renderer_arg, enemyMotion.position, angle, false);
 	createProjectile(renderer_arg, enemyMotion.position, angle + shotgun_angle, false);
 	createProjectile(renderer_arg, enemyMotion.position, angle - shotgun_angle, false);
@@ -345,4 +415,17 @@ void AISystem::simple_chase_enemy(Entity &enemy, Motion &playersMotion)
 			}
 		}
 	}
+};
+
+// Apply Quadratic Bezier multiplier for the boss
+vec2 AISystem::quadratic_bezier(float t, float max_time) {
+	float t_norm = t/max_time;
+	float not_t = min((max_time - t)/max_time, 1.0f);
+
+	// Starting position is 0.5
+	vec2 p0 = vec2(0.7f, 0.7f);
+	vec2 p1 = vec2(0.3f, 3.0f);
+	vec2 p2 = vec2(0.2, 0.2f);
+	vec2 bezier_calc = not_t * not_t * p0 + 2 * not_t * t_norm * p1 + t_norm * t_norm * p2;
+	return bezier_calc;
 };

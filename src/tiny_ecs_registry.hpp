@@ -39,6 +39,8 @@ public:
     ComponentContainer<Boss> bosses;
     ComponentContainer<TextRenderRequest> textRenderRequests;
     ComponentContainer<Text> texts;
+    ComponentContainer<Teleporter> teleporters;
+    ComponentContainer<Teleporting> teleporting;
 
     // constructor that adds all containers for looping over them
     // IMPORTANT: Don't forget to add any newly added containers!
@@ -70,6 +72,8 @@ public:
         registry_list.push_back(&bosses);
         registry_list.push_back(&textRenderRequests);
         registry_list.push_back(&texts);
+        registry_list.push_back(&teleporters);
+        registry_list.push_back(&teleporting);
     }
 
     void clear_all_components()
