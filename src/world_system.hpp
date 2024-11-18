@@ -51,6 +51,7 @@ private:
     // Input callback functions
     void on_key(int key, int, int action, int mod);
     void on_mouse_move(vec2 pos);
+    bool detect_heart_shape();
     void on_mouse_click(int button, int action, int mods);
 
     // Helper functions

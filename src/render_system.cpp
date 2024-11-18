@@ -373,7 +373,7 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 	// Truely render to the screen
 	drawToScreen();
 
-	if (ss.activeScreen == (int)SCREEN_ID::GAME_SCREEN)
+    if (ss.activeScreen == (int)SCREEN_ID::GAME_SCREEN)
 	{
 		int w, h;
 		glfwGetWindowSize(window, &w, &h);
@@ -393,11 +393,56 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 		if (!texts.empty()) {
 			renderTextBulk(texts);
 		}
+		drawMouseGestures();
 	}
 
 	// flicker-free display with a double buffer
 	glfwSwapBuffers(window);
 	gl_has_errors();
+}
+
+void RenderSystem::drawMouseGestures() {
+    glUseProgram(ges_shaderProgram);
+    gl_has_errors();
+    glUniform1f(glGetUniformLocation(ges_shaderProgram, "thickness"), 4.0f);
+    glBindVertexArray(ges_VAO);
+    auto &path = mouseGestures.renderPath;
+    
+    if (mouseGestures.isHeld && !mouseGestures.gesturePath.empty()) {
+        std::vector<vec2> expandedPath;
+        std::vector<float> sides;
+        
+        for (const auto& point : path) {
+            expandedPath.push_back(point);
+            expandedPath.push_back(point);
+            sides.push_back(-1.0f);
+            sides.push_back(1.0f);
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, ges_VBO);
+        glBufferData(GL_ARRAY_BUFFER, expandedPath.size() * sizeof(vec2), expandedPath.data(), GL_DYNAMIC_DRAW);
+        gl_has_errors();
+
+        GLuint sideVBO;
+        glGenBuffers(1, &sideVBO);
+        glBindBuffer(GL_ARRAY_BUFFER, sideVBO);
+        glBufferData(GL_ARRAY_BUFFER, sides.size() * sizeof(float), sides.data(), GL_DYNAMIC_DRAW);
+        gl_has_errors();
+
+        glBindBuffer(GL_ARRAY_BUFFER, ges_VBO);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vec2), (void*)0);
+        glEnableVertexAttribArray(0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, sideVBO);
+        glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, expandedPath.size());
+        glDeleteBuffers(1, &sideVBO);
+    }
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    gl_has_errors();
 }
 
 void RenderSystem::drawMainMenu() {

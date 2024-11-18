@@ -72,6 +72,7 @@ bool RenderSystem::init(GLFWwindow* window_arg)
     initializeGlTextures();
 	initializeGlEffects();
 	initializeGlGeometryBuffers();
+	mouseGestureInit();
 
     saveFileExists = doesSaveFileExist();
     initMainMenu(saveFileExists);
@@ -99,6 +100,56 @@ std::string readShaderFile(const std::string& filename)
 	oss << ifs.rdbuf();
 	std::cout << oss.str() << std::endl;
 	return oss.str();
+}
+
+bool RenderSystem::mouseGestureInit() {
+	std::string vertexShaderSource = readShaderFile(PROJECT_SOURCE_DIR + std::string("shaders/gesture.vs.glsl"));
+	std::string fragmentShaderSource = readShaderFile(PROJECT_SOURCE_DIR + std::string("shaders/gesture.fs.glsl"));
+	const char* vertexShaderSource_c = vertexShaderSource.c_str();
+	const char* fragmentShaderSource_c = fragmentShaderSource.c_str();
+
+	glGenVertexArrays(1, &ges_VAO);
+	glGenBuffers(1, &ges_VBO);
+
+	unsigned int gest_vertexShader;
+	gest_vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(gest_vertexShader, 1, &vertexShaderSource_c, NULL);
+	glCompileShader(gest_vertexShader);
+
+	unsigned int ges_fragmentShader;
+	ges_fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(ges_fragmentShader, 1, &fragmentShaderSource_c, NULL);
+	glCompileShader(ges_fragmentShader);
+
+	ges_shaderProgram = glCreateProgram();
+	glAttachShader(ges_shaderProgram, gest_vertexShader);
+	glAttachShader(ges_shaderProgram, ges_fragmentShader);
+	glLinkProgram(ges_shaderProgram);
+
+	// apply orthographic projection matrix for font, i.e., screen space
+	glUseProgram(ges_shaderProgram);
+	int w, h;
+	glfwGetWindowSize(window, &w, &h);
+	glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(w), 0.0f, static_cast<float>(h));
+	GLint project_location = glGetUniformLocation(ges_shaderProgram, "projection");
+	assert(project_location > -1);
+	std::cout << "project_location: " << project_location << std::endl;
+	glUniformMatrix4fv(project_location, 1, GL_FALSE, glm::value_ptr(projection));
+
+	glDeleteShader(gest_vertexShader);
+	glDeleteShader(ges_fragmentShader);
+
+	glBindVertexArray(ges_VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, ges_VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec2) * 1024, NULL, GL_DYNAMIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(vec2), 0);
+
+	// release buffers
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	return true;
 }
 
 bool RenderSystem::fontInit(GLFWwindow* window, const std::string& font_filename, unsigned int font_default_size) {

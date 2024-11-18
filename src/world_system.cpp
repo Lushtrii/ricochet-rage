@@ -862,14 +862,68 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
         vec2 direction_normalized = normalize(direction);
         float angle = atan2(direction_normalized.y, direction_normalized.x);
         motion.angle = angle;
+
+        // Deal with mouse gestures
+        if (mouseGestures.isHeld) {
+            mouseGestures.gesturePath.push_back(mouse_position);
+            mouseGestures.renderPath.push_back(vec2(mouse_position.x, window_height_px - mouse_position.y));
+            mouseGestures.lastPosition = mouse_position;
+        } else {
+            if (!mouseGestures.gesturePath.empty()) {
+                if (detect_heart_shape()) {
+                    // Heal the player
+                    Health& playerHealth = registry.healths.get(player);
+                    playerHealth.value = min(playerHealth.value + 50, 100);
+                    createText(renderer, "+ 50", registry.motions.get(player).position, 1.5f, {0.0, 1.0, 0.0});
+                }
+            }
+            // Just delete everything from the gesturePath
+            mouseGestures.gesturePath.clear();
+            mouseGestures.gesturePath.shrink_to_fit();
+            mouseGestures.renderPath.clear();
+            mouseGestures.renderPath.shrink_to_fit();
+        }
     }
+}
+
+bool WorldSystem::detect_heart_shape()
+{
+    auto &path = mouseGestures.gesturePath;
+    // Find heart structure
+    // find peaks of heart, see threshold
+    int half_index = path.size() / 2;
+    int first_peak_i = 0;
+    for (int i = 0; i < half_index; i++)
+    {
+        if (path[i].y < path[first_peak_i].y)
+        {
+            first_peak_i = i;
+        }
+    }
+    int second_peak_i = half_index;
+    for (int i = half_index; i < path.size(); i++)
+    {
+        if (path[i].y < path[first_peak_i].y)
+        {
+            second_peak_i = i;
+        }
+    }
+
+    bool peakthreshold = abs(path[first_peak_i].y - path[second_peak_i].y) < mouseGestures.peakThreshold;
+    // y valley of peaks is smaller than the peaks
+    int valley = (second_peak_i + first_peak_i) / 2;
+    bool meanSmaller = path[valley].y > path[first_peak_i].y && path[valley].y > path[second_peak_i].y;
+    // Is combined
+    bool firstEndSimilar = length(path.front() - path.back()) < mouseGestures.threshold;
+    bool minSize = path.size() > mouseGestures.minSize;
+    return peakthreshold && meanSmaller && firstEndSimilar && minSize;
 }
 
 void WorldSystem::on_mouse_click(int button, int action, int mods)
 {
+    int activeScreen = renderer->getActiveScreen();
     if (action == GLFW_PRESS)
     {
-        int activeScreen = renderer->getActiveScreen();
         if (activeScreen == (int)SCREEN_ID::TUTORIAL_SCREEN)
         {
             return;
@@ -910,11 +964,18 @@ void WorldSystem::on_mouse_click(int button, int action, int mods)
         else
         {
             Motion &motion = registry.motions.get(player);
-            if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !registry.deathTimers.has(player))
+            if (button == GLFW_MOUSE_BUTTON_LEFT && !(mods & GLFW_MOD_CONTROL) && action == GLFW_PRESS && !registry.deathTimers.has(player))
             {
                 Mix_PlayChannel(-1, laser_shot_sound, 0);
                 createProjectile(renderer, motion.position, motion.angle, true);
             }
         }
+    }
+    
+    // Mouse Gestures for healing
+    bool rightClicked = button == GLFW_MOUSE_BUTTON_RIGHT;
+    bool ctrlClicked = button == GLFW_MOUSE_BUTTON_LEFT && (mods & GLFW_MOD_CONTROL);
+    if ((rightClicked || ctrlClicked) && !registry.deathTimers.has(player) && activeScreen == (int) SCREEN_ID::GAME_SCREEN) {
+        mouseGestures.isHeld = action == GLFW_PRESS;
     }
 }

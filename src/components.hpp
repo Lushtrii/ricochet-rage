@@ -245,6 +245,19 @@ struct TextRenderRequest {
         : text(t), x(px), y(py), scale(s), color(c), transform(trans) {}
 };
 
+// Mouse Gestures
+struct MouseGestures {
+    bool isHeld = false;
+    vec2 position;
+    vec2 lastPosition;
+    std::vector<vec2> gesturePath;
+    std::vector<vec2> renderPath;
+    float threshold = 100.0f;
+    float peakThreshold = 200.0f;
+    int minSize = 20;
+};
+extern MouseGestures mouseGestures;
+
 /**
  * The following enumerators represent global identifiers refering to graphic
  * assets. For example TEXTURE_ASSET_ID are the identifiers of each texture

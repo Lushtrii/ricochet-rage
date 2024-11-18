@@ -101,6 +101,8 @@ public:
     bool initWinScreen();
     void drawWinScreen();
 
+    bool mouseGestureInit();
+
     int getActiveScreen() const;
     void setActiveScreen(int activeScreen);
 
@@ -121,6 +123,8 @@ public:
 
     // Draw all entities
     void draw(float elapsed_ms, bool isPaused);
+
+    void drawMouseGestures();
 
     mat3 createProjectionMatrix();
 
@@ -172,6 +176,10 @@ private:
 	GLuint m_font_shaderProgram;
 	GLuint m_font_VAO;
 	GLuint m_font_VBO;
+
+    GLuint ges_shaderProgram;
+    GLuint ges_VAO;
+    GLuint ges_VBO;
 };
 
 bool loadEffectFromFile(
