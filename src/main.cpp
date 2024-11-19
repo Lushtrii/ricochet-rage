@@ -54,19 +54,18 @@ int main()
         t = now;
 
         bool isPaused = world.isPaused();
-        if (!isPaused) {
+        if (!isPaused)
+        {
             world.step(elapsed_ms);
             physics.step(elapsed_ms);
             world.handle_collisions(elapsed_ms);
             aiSystem.step(elapsed_ms);
-
         }
 
         renderer.draw(elapsed_ms, isPaused);
     }
 
     // Save game state on close
-
 
     return EXIT_SUCCESS;
 }
