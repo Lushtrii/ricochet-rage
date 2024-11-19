@@ -22,7 +22,6 @@ void SaveGameToFile(RenderSystem *renderer);
 bool LoadGameFromFile(RenderSystem *renderer);
 bool doesSaveFileExist(RenderSystem *renderer);
 
-void GenerateMap(RenderSystem *renderer, int seed);
 // the player
 Entity createPlayer(RenderSystem *renderer, vec2 pos);
 
@@ -32,7 +31,7 @@ Entity createRangedEnemy(RenderSystem *renderer, vec2 position);
 Entity createBossEnemy(RenderSystem *renderer, vec2 position);
 
 // the game walls
-Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle = 0);
+Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle);
 
 Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 size);
 

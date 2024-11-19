@@ -4,15 +4,13 @@
 #include "render_system.hpp"
 #include "tiny_ecs_registry.hpp"
 #include "world_system.hpp"
-#include "wfc/tiling_wfc.hpp"
-#include "wfc/array2D.hpp"
 
 #include <cstdio>
 #include <iostream>
 #include <fstream>
 #include <string>
 
-void SaveGameToFile(RenderSystem *renderer)
+void SaveGameToFile(RenderSystem* renderer)
 {
     std::ofstream f("../Save1.data");
 
@@ -39,8 +37,7 @@ void SaveGameToFile(RenderSystem *renderer)
             f << motion.velocity.x << "\n"
               << motion.velocity.y << "\n";
         }
-        if (registry.renderRequests.has(e) && !registry.clickables.has(e) && e != renderer->getHoverEntity())
-        {
+        if (registry.renderRequests.has(e) && !registry.clickables.has(e) && e != renderer->getHoverEntity()) {
             RenderRequest &r = registry.renderRequests.get(e);
             f << "render_request" << "\n";
             f << (int)r.used_effect << "\n";
@@ -152,20 +149,19 @@ void SaveGameToFile(RenderSystem *renderer)
             f << a.is_playing << "\n";
             f << a.loop << "\n";
         }
-        if (registry.bosses.has(e))
+        if (registry.bosses.has(e)) 
         {
             f << "boss" << '\n';
         }
-        if (registry.teleporters.has(e))
+        if (registry.teleporters.has(e)) 
         {
             Teleporter &t = registry.teleporters.get(e);
             f << "teleporter" << "\n";
             f << t.animation_time << "\n";
             f << t.max_teleport_time << "\n";
-            f << t.prevScale.x << "\n"
-              << t.prevScale.y << "\n";
+            f << t.prevScale.x << "\n" << t.prevScale.y << "\n";
         }
-        if (registry.teleporting.has(e))
+        if (registry.teleporting.has(e)) 
         {
             Teleporting &t = registry.teleporting.get(e);
             f << "teleporting" << "\n";
@@ -183,11 +179,10 @@ int LoadInt(std::ifstream &f)
     return std::stoi(line);
 }
 
-unsigned int LoadUnsignedInt(std::ifstream &f)
-{
+unsigned int LoadUnsignedInt(std::ifstream &f) {
     std::string line;
     getline(f, line);
-    return (unsigned int)std::stoi(line);
+    return (unsigned int) std::stoi(line);
 }
 
 float LoadFloat(std::ifstream &f)
@@ -207,8 +202,7 @@ bool LoadBool(std::ifstream &f)
 bool LoadGameFromFile(RenderSystem *renderer)
 {
     bool saveFileExists = renderer->doesSaveFileExist();
-    if (!saveFileExists)
-    {
+    if (!saveFileExists) {
         return false;
     }
     std::ifstream f("../Save1.data");
@@ -299,7 +293,7 @@ bool LoadGameFromFile(RenderSystem *renderer)
         {
             LineOfSight &l = registry.lightOfSight.emplace(e);
             l.ray_distance = LoadFloat(f);
-            l.ray_width = LoadFloat(f);
+            l.ray_width = LoadFloat(f );
         }
         else if (line == "projectile")
         {
@@ -347,7 +341,7 @@ bool LoadGameFromFile(RenderSystem *renderer)
             t.max_teleport_time = LoadFloat(f);
             t.prevScale = vec2(LoadFloat(f), LoadFloat(f));
         }
-        else if (line == "teleporting")
+        else if (line == "teleporting") 
         {
             Teleporting &t = registry.teleporting.emplace(e);
             t.starting_time = LoadFloat(f);
@@ -356,64 +350,6 @@ bool LoadGameFromFile(RenderSystem *renderer)
     }
 
     return true;
-}
-
-void GenerateMap(RenderSystem *renderer, int seed)
-{
-    enum TT // TT = TileType
-    {
-        FLOOR,
-        FLOOR_CONNECTOR,
-        WALL,
-        WALL_CONNECTOR,
-    };
-
-    std::vector<Tile<unsigned>> tiles;
-    std::vector<std::tuple<unsigned, unsigned, unsigned, unsigned>> neighbors_ids;
-
-    tiles.emplace_back(Array2D<unsigned>(1, 1, FLOOR), Symmetry::X, 10);
-    neighbors_ids.emplace_back(FLOOR, 0, FLOOR, 0);
-    neighbors_ids.emplace_back(FLOOR, 0, FLOOR_CONNECTOR, 0);
-    neighbors_ids.emplace_back(FLOOR, 0, WALL, 0);
-
-    tiles.emplace_back(Array2D<unsigned>(1, 1, FLOOR_CONNECTOR), Symmetry::X, 1);
-    neighbors_ids.emplace_back(FLOOR_CONNECTOR, 0, FLOOR_CONNECTOR, 0);
-    neighbors_ids.emplace_back(FLOOR_CONNECTOR, 0, FLOOR, 0);
-
-    tiles.emplace_back(Array2D<unsigned>(1, 1, WALL), Symmetry::X, 2);
-    neighbors_ids.emplace_back(WALL, 0, WALL, 0);
-    neighbors_ids.emplace_back(WALL, 0, WALL_CONNECTOR, 0);
-    neighbors_ids.emplace_back(WALL, 0, FLOOR, 0);
-
-    tiles.emplace_back(Array2D<unsigned>(1, 1, WALL_CONNECTOR), Symmetry::X, 1);
-    neighbors_ids.emplace_back(WALL_CONNECTOR, 0, WALL_CONNECTOR, 0);
-    neighbors_ids.emplace_back(WALL_CONNECTOR, 0, WALL, 0);
-
-    // neighbors_ids.emplace_back(, 0, , 0);
-
-    int height = 15;
-    int width = 25;
-    bool periodic_output = true;
-    TilingWFC<unsigned> wfc = TilingWFC<unsigned>(tiles, neighbors_ids, height, width, {periodic_output}, seed);
-    Array2D<unsigned> success = wfc.run();
-
-    vec2 tileSize = vec2(50, 50);
-    vec2 halftileSize = tileSize * 0.5f;
-    std::cout << "PRINTING MAP" << std::endl;
-    for (int x = 0; x < width; x++)
-    {
-        for (int y = 0; y < height; y++)
-        {
-            int value = success.get(y, x);
-            std::cout << value << " ";
-
-            vec2 pos = vec2(x, y) * tileSize + halftileSize;
-
-            if (value == WALL || value == WALL_CONNECTOR)
-                createWall(renderer, pos, tileSize, 0);
-        }
-        std::cout << std::endl;
-    }
 }
 
 Entity createPlayer(RenderSystem *renderer, vec2 pos)
@@ -440,7 +376,7 @@ Entity createPlayer(RenderSystem *renderer, vec2 pos)
     registry.players.emplace(entity);
     registry.dashes.emplace(entity);
     registry.damageEffect.emplace(entity);
-
+    
     Animation &animation = registry.animations.emplace(entity);
     animation.sprite_height = 32;
     animation.sprite_width = 32;
@@ -541,8 +477,7 @@ Entity createRangedEnemy(RenderSystem *renderer, vec2 position)
 }
 
 // Create Boss Enemy
-Entity createBossEnemy(RenderSystem *renderer, vec2 position)
-{
+Entity createBossEnemy(RenderSystem *renderer, vec2 position) {
     auto entity = Entity();
 
     // Store a reference to the potentially re-used mesh object (the value is stored in the resource cache)
@@ -550,7 +485,7 @@ Entity createBossEnemy(RenderSystem *renderer, vec2 position)
     registry.meshPtrs.emplace(entity, &mesh);
 
     // Setting enemy health
-    Health &bossHealth = registry.healths.emplace(entity);
+    Health& bossHealth = registry.healths.emplace(entity);
     bossHealth.value = 300;
 
     // Initialize the motion
@@ -567,7 +502,7 @@ Entity createBossEnemy(RenderSystem *renderer, vec2 position)
     registry.enemies.emplace(entity);
 
     // Make more rapid attacks but more time in between
-    ReloadTime &bossReload = registry.reloadTimes.emplace(entity);
+    ReloadTime& bossReload = registry.reloadTimes.emplace(entity);
 
     // Also a melee enemy
     registry.meleeAttacks.emplace(entity);
@@ -683,6 +618,7 @@ Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position)
     return entity;
 }
 
+
 Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 scale)
 {
     Entity entity = Entity();
@@ -691,11 +627,13 @@ Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 scale)
     registry.meshPtrs.emplace(entity, &mesh);
 
     registry.renderRequests.insert(
-        entity, {TEXTURE_ASSET_ID::HEALTH_BAR,
-                 EFFECT_ASSET_ID::TEXTURED,
-                 GEOMETRY_BUFFER_ID::SPRITE});
+        entity, {
+            TEXTURE_ASSET_ID::HEALTH_BAR,
+            EFFECT_ASSET_ID::TEXTURED,
+            GEOMETRY_BUFFER_ID::SPRITE
+        });
 
-    Motion &motion = registry.motions.emplace(entity);
+    Motion& motion = registry.motions.emplace(entity);
     motion.position = position;
     motion.scale = scale;
 
@@ -707,7 +645,7 @@ Entity createText(RenderSystem *renderer, std::string text, vec2 position, float
 {
     Entity entity = Entity();
 
-    Text &screenText = registry.texts.emplace(entity);
+    Text& screenText = registry.texts.emplace(entity);
     screenText.text = text;
     screenText.position = position;
     screenText.scale = scale;
