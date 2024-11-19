@@ -248,7 +248,7 @@ void RenderSystem::drawToScreen()
 	glDepthRange(0, 10);
 	glClearColor(1.f, 0, 0, 1.0);
 	glClearDepth(1.f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	gl_has_errors();
 	// Enabling alpha channel for textures
 	glDisable(GL_BLEND);
@@ -307,11 +307,12 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 	glDepthRange(0.00001, 10);
 	//glClearColor(GLfloat(172 / 255), GLfloat(216 / 255), GLfloat(255 / 255), 1.0);
 
-	//glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // black space background
+	/* glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // black space background */
 	glClearColor(0.75f, 0.75f, 0.75f, 1.0f); 
 
 	glClearDepth(10.f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	/* glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); */
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDisable(GL_DEPTH_TEST); // native OpenGL does not work with a depth buffer
@@ -337,7 +338,7 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
     else if (ss.activeScreen == (int)SCREEN_ID::GAME_SCREEN) {
         for (Entity entity : registry.renderRequests.entities)
         {
-            if (!registry.motions.has(entity) || registry.clickables.has(entity)) 
+            if (!registry.motions.has(entity) || registry.clickables.has(entity) || registry.players.has(entity)) 
                 continue;
             // Note, its not very efficient to access elements indirectly via the entity
             // albeit iterating through all Sprites in sequence. A good point to optimize
@@ -347,6 +348,13 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
             }
             drawTexturedMesh(entity, projection_2D);
         }
+        lightScreen();
+        // Draw player AFTER shadow has been cast so it is not shaded
+        Entity player = registry.players.entities[0];
+        drawTexturedMeshWithAnim(player, projection_2D, registry.animations.get(player));
+        drawTexturedMesh(player, projection_2D);
+        
+        glBindVertexArray(vao);
     }
     else if (ss.activeScreen == (int)SCREEN_ID::PAUSE_SCREEN) {
         for (Entity entity : registry.renderRequests.entities)
@@ -361,6 +369,7 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
             }
             drawTexturedMesh(entity, projection_2D);
         }
+        lightScreen();
         drawPauseMenu();
     }
     else if (ss.activeScreen == (int) SCREEN_ID::DEATH_SCREEN) {

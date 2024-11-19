@@ -81,6 +81,8 @@ bool RenderSystem::init(GLFWwindow* window_arg)
     initDeathScreen();
     initWinScreen();
 
+    initLight();
+
 	return true;
 }
 
@@ -326,6 +328,7 @@ void RenderSystem::bindVBOandIBO(GEOMETRY_BUFFER_ID gid, std::vector<T> vertices
 	gl_has_errors();
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffers[(uint)gid]);
+    gl_has_errors();
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER,
 		sizeof(indices[0]) * indices.size(), indices.data(), GL_STATIC_DRAW);
 	gl_has_errors();
@@ -404,6 +407,21 @@ void RenderSystem::initializeGlGeometryBuffers()
 	// Counterclockwise as it's the default opengl front winding direction.
 	const std::vector<uint16_t> screen_indices = { 0, 1, 2 };
 	bindVBOandIBO(GEOMETRY_BUFFER_ID::SCREEN_TRIANGLE, screen_vertices, screen_indices);
+
+    vec2 innerTopLeftCorner = vec2(window_width_px - 1175, window_height_px - 650);
+    vec2 innerTopRightCorner = vec2(window_width_px - 75, window_height_px - 650);
+    vec2 innerBottomLeftCorner = vec2(window_width_px - 1175, window_height_px - 100);
+    vec2 innerBottomRightCorner = vec2(window_width_px - 75, window_height_px - 100);
+
+	std::vector<vec3> shadow_vertices(4);
+    shadow_vertices[0] = { innerTopLeftCorner, 1.0f }; // Top-left
+    shadow_vertices[1] = { innerTopRightCorner, 1.0f }; // Top-right
+    shadow_vertices[2] = {  innerBottomRightCorner, 1.0f }; // Bottom-right
+    shadow_vertices[3] = { innerBottomLeftCorner, 1.0f }; // Bottom-left
+
+	// Counterclockwise as it's the default opengl front winding direction.
+	const std::vector<uint16_t> shadow_indices = { 0, 3, 2, 0, 2, 1};
+	bindVBOandIBO(GEOMETRY_BUFFER_ID::SHADOW_PLANE,shadow_vertices,shadow_indices);
 }
 
 RenderSystem::~RenderSystem()
@@ -414,7 +432,7 @@ RenderSystem::~RenderSystem()
 	glDeleteBuffers((GLsizei)index_buffers.size(), index_buffers.data());
 	glDeleteTextures((GLsizei)texture_gl_handles.size(), texture_gl_handles.data());
 	glDeleteTextures(1, &off_screen_render_buffer_color);
-	glDeleteRenderbuffers(1, &off_screen_render_buffer_depth);
+	glDeleteRenderbuffers(1, &off_screen_render_buffer_depth_stencil);
 	gl_has_errors();
 
 	for(uint i = 0; i < effect_count; i++) {
@@ -444,11 +462,12 @@ bool RenderSystem::initScreenTexture()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	gl_has_errors();
 
-	glGenRenderbuffers(1, &off_screen_render_buffer_depth);
-	glBindRenderbuffer(GL_RENDERBUFFER, off_screen_render_buffer_depth);
+	glGenRenderbuffers(1, &off_screen_render_buffer_depth_stencil);
+	glBindRenderbuffer(GL_RENDERBUFFER, off_screen_render_buffer_depth_stencil);
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, off_screen_render_buffer_color, 0);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, framebuffer_width, framebuffer_height);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, off_screen_render_buffer_depth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_STENCIL, framebuffer_width, framebuffer_height);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, off_screen_render_buffer_depth_stencil);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, off_screen_render_buffer_depth_stencil);
 	gl_has_errors();
 
 	assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);

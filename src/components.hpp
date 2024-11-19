@@ -216,6 +216,18 @@ struct Animation {
     bool loop = true;
 };
 
+struct Ray {
+    vec2 pos;
+    vec2 direction;
+};
+
+// In parametric form: p + t * direction
+struct LineSegment {
+    vec2 pos; 
+    vec2 direction;
+    int t;
+};
+
 // font character structure
 struct Character {
 	unsigned int TextureID;  // ID handle of the glyph texture
@@ -245,6 +257,9 @@ struct TextRenderRequest {
         : text(t), x(px), y(py), scale(s), color(c), transform(trans) {}
 };
 
+struct Light {
+    glm::vec2 position;
+};
 // Mouse Gestures
 struct MouseGestures {
     bool isHeld = false;
@@ -311,7 +326,8 @@ enum class EFFECT_ASSET_ID
 {
     TEXTURED = 0,
     WATER = TEXTURED + 1,
-    EFFECT_COUNT = WATER + 1
+    LIGHT = WATER + 1,
+    EFFECT_COUNT = LIGHT + 1
 };
 const int effect_count = (int)EFFECT_ASSET_ID::EFFECT_COUNT;
 
@@ -321,7 +337,9 @@ enum class GEOMETRY_BUFFER_ID
     SCREEN_TRIANGLE = SPRITE + 1,
     UI_COMPONENT = SCREEN_TRIANGLE + 1,
     PROJECTILE = UI_COMPONENT + 1,
-    GEOMETRY_COUNT = PROJECTILE + 1
+    VISIBILITY_POLYGON = PROJECTILE + 1,
+    SHADOW_PLANE = VISIBILITY_POLYGON + 1,
+    GEOMETRY_COUNT = SHADOW_PLANE + 1
 };
 
 enum class SCREEN_ID
