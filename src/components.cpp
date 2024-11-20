@@ -9,8 +9,10 @@
 #include <iostream>
 #include <sstream>
 
+LevelStruct level_one_default = {1, 20, 0, 0, 2000};
 Debug debugging;
 MouseGestures mouseGestures;
+CurrLevels currLevels = {0, 3, &level_one_default};
 float death_timer_counter_ms = 3000;
 
 // Very, VERY simple OBJ loader from https://github.com/opengl-tutorials/ogl tutorial 7

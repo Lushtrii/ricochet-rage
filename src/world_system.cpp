@@ -16,7 +16,7 @@
 
 const size_t TOTAL_NUM_ENEMIES = 20;      // total number of enemies in the game level
 const size_t MAX_NUM_ENEMIES = 10;        // maximum number of enemies on the screen
-const size_t ENEMY_SPAWN_DELAY_MS = 4000; // time between enemy spawns
+const size_t ENEMY_SPAWN_DELAY_MS = 3000; // time between enemy spawns
 
 
 void WorldSystem::on_window_minimize(int minimized)
@@ -187,6 +187,8 @@ void WorldSystem::init(RenderSystem *renderer_arg)
     if (saveFileExists)
     {
         LoadGameFromFile(renderer_arg);
+        // Make the code better later
+        currLevels.currStruct = levels[currLevels.current_level];
         init_values();
     }
     else
@@ -208,8 +210,14 @@ bool WorldSystem::mouseOverBox(vec2 mousePos, Entity entity)
 // Update our game world
 bool WorldSystem::step(float elapsed_ms_since_last_update)
 {
+    // Show Current Level
+    if (!registry.texts.has(showLevel)) {
+        showLevel = createText(renderer, "Level " + std::to_string(currLevels.current_level + 1), vec2(window_width_px/2 - 25.0f, 40.0f), 2.0f, {1.0, 0.0, 0.0}, false);
+    } else {
+        Text &showLevelText = registry.texts.get(showLevel);
+        showLevelText.text = "Level " + std::to_string(currLevels.current_level + 1);
+    }
 
-    
 
     static int frames = 0;
     static double prevTime = glfwGetTime();
@@ -243,9 +251,11 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     
     for (Entity entity : registry.texts.entities) {
         Text &text = registry.texts.get(entity);
-        text.timer -= elapsed_ms_since_last_update / 1000.f;
-        if (text.timer < 0) {
-            registry.remove_all_components_of(entity);
+        if (text.timed) {
+            text.timer -= elapsed_ms_since_last_update / 1000.f;
+            if (text.timer < 0) {
+                registry.remove_all_components_of(entity);
+            }
         }
     }
 
@@ -320,10 +330,11 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
 
     // spawn new enemies
     next_enemy_spawn -= elapsed_ms_since_last_update * current_speed;
-    if (num_enemies_seen < (int)TOTAL_NUM_ENEMIES && registry.enemies.components.size() <= MAX_NUM_ENEMIES && next_enemy_spawn < 0.f)
+    LevelStruct &curr_level_struct = *currLevels.currStruct;
+    bool enemiesLeft = (curr_level_struct.num_melee + curr_level_struct.num_ranged + curr_level_struct.num_boss) > 0;
+    if (enemiesLeft && next_enemy_spawn < 0.f)
     {
-        num_enemies_seen++;
-        next_enemy_spawn = (ENEMY_SPAWN_DELAY_MS / 2) + uniform_dist(rng) * (ENEMY_SPAWN_DELAY_MS / 2);
+        next_enemy_spawn = (curr_level_struct.enemy_spawn_time / 2) + uniform_dist(rng) * (curr_level_struct.enemy_spawn_time / 2);
 
         bool is_valid_spawn = false;
         vec2 spawn_pos;
@@ -353,24 +364,40 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
             }
         }
 
-        bool spawn_melee = uniform_dist(rng) < 0.5;
-        if (spawn_melee)
+        // Deprecated for now
+        // bool spawn_melee = uniform_dist(rng) < 0.5;
+        if (curr_level_struct.num_melee >= 1)
         {
             createMeleeEnemy(renderer, spawn_pos);
+            curr_level_struct.num_melee--;
         }
-        else
+        else if (curr_level_struct.num_ranged >= 1)
         {
             createRangedEnemy(renderer, spawn_pos);
+            curr_level_struct.num_ranged--;
+        } 
+        else if (curr_level_struct.num_boss >= 1)
+        {
+            createBossEnemy(renderer, spawn_pos);
+            curr_level_struct.num_boss--;
         }
     }
 
-    // Win condition
-    if (num_enemies_seen == TOTAL_NUM_ENEMIES && (int)registry.enemies.entities.size() == 0)
+    // Level cleared, going to next level
+    if (!enemiesLeft && (int)registry.enemies.entities.size() == 0)
     {
-        renderer->setActiveScreen((int)SCREEN_ID::WIN_SCREEN);
-        renderer->flipActiveButtions(renderer->getActiveScreen());
-        m_isPaused = true;
-        std::remove("../Save1.data");
+        printf("NEXT LEVEL");
+        currLevels.current_level++;
+        if (currLevels.current_level == currLevels.total_level_index) {
+            renderer->setActiveScreen((int)SCREEN_ID::WIN_SCREEN);
+            renderer->flipActiveButtions(renderer->getActiveScreen());
+            reset_level();
+            m_isPaused = true;
+            std::remove("../Save1.data");
+            restart_game();
+            return true;
+        }
+        currLevels.currStruct = levels[currLevels.current_level];
         restart_game();
         return true;
     }
@@ -386,12 +413,19 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         renderer->setActiveScreen((int)SCREEN_ID::DEATH_SCREEN);
         renderer->flipActiveButtions(renderer->getActiveScreen());
         std::remove("../Save1.data");
+        reset_level();
         m_isPaused = true;
         restart_game();
         return true;
     }
 
     return true;
+}
+
+void WorldSystem::reset_level()
+{
+    currLevels.current_level = 0;
+    currLevels.currStruct = levels[0];
 }
 
 void WorldSystem::init_values()
@@ -403,6 +437,8 @@ void WorldSystem::init_values()
     num_enemies_seen = 0;
 
     player = registry.players.entities.back();
+
+    printf("Current Level: %d", currLevels.current_level + 1);
 }
 
 // Reset the world state to its initial state
@@ -433,8 +469,6 @@ void WorldSystem::restart_game()
     init_values();
     registry.colors.insert(player, {1, 0.8f, 0.8f});
     update_player_move_dir();
-
-    createBossEnemy(renderer, vec2(window_width_px / 2 + 300, window_height_px / 2));
 
     // create the game walls
     createWall(renderer, vec2(window_width_px / 2.f, window_height_px / 2.f), vec2(100, 100), 0);

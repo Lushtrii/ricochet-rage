@@ -40,3 +40,4 @@ Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_p
 Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position);
 
 Entity createText(RenderSystem *renderer, std::string text, vec2 position, float scale, vec3 color);
+Entity createText(RenderSystem *renderer, std::string text, vec2 position, float scale, vec3 color, bool timed);

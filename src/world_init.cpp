@@ -175,6 +175,10 @@ void SaveGameToFile(RenderSystem* renderer)
             f << t.starting_time << "\n";
             f << t.max_time << "\n";
         }
+        // Save current level
+        f << "currentlevel" << "\n";
+        f << currLevels.current_level << "\n";
+        f << currLevels.total_level_index << "\n";
     }
     f.close();
 }
@@ -360,6 +364,11 @@ bool LoadGameFromFile(RenderSystem *renderer)
             Teleporting &t = registry.teleporting.emplace(e);
             t.starting_time = LoadFloat(f);
             t.max_time = LoadFloat(f);
+        }
+        else if (line == "currentlevel")
+        {
+            currLevels.current_level = LoadInt(f);
+            currLevels.total_level_index = LoadInt(f);
         }
     }
 
@@ -664,6 +673,21 @@ Entity createText(RenderSystem *renderer, std::string text, vec2 position, float
     screenText.position = position;
     screenText.scale = scale;
     screenText.color = color;
+
+    return entity;
+}
+
+
+Entity createText(RenderSystem *renderer, std::string text, vec2 position, float scale, vec3 color, bool timed)
+{
+    Entity entity = Entity();
+
+    Text& screenText = registry.texts.emplace(entity);
+    screenText.text = text;
+    screenText.position = position;
+    screenText.scale = scale;
+    screenText.color = color;
+    screenText.timed = timed;
 
     return entity;
 }

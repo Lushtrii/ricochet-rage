@@ -243,6 +243,7 @@ struct Text {
     glm::vec3 color;
     float scale;
     float timer = 0.2f;
+    bool timed = true;
 };
 
 struct TextRenderRequest {
@@ -272,6 +273,22 @@ struct MouseGestures {
     int minSize = 20;
 };
 extern MouseGestures mouseGestures;
+
+// Levels
+struct LevelStruct {
+    int level_num = 1;
+    int num_melee = 10;
+    int num_ranged = 10;
+    int num_boss = 1;
+    int enemy_spawn_time = 3000;
+};
+
+struct CurrLevels {
+    int current_level = 1;
+    int total_level_index = 3;
+    LevelStruct* currStruct;
+};
+extern CurrLevels currLevels;
 
 /**
  * The following enumerators represent global identifiers refering to graphic

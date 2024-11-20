@@ -32,6 +32,8 @@ public:
     // Steps the game ahead by ms milliseconds
     bool step(float elapsed_ms);
 
+    void reset_level();
+
     // Check for collisions
     void handle_collisions(float elapsed_ms);
 
@@ -87,6 +89,14 @@ private:
     Mix_Chunk *player_death_sound;
     Mix_Chunk *enemy_death_sound;
     Mix_Chunk *laser_shot_sound;
+
+    LevelStruct level_one = {1, 80, 0, 0, 2000};
+    LevelStruct level_two = {2, 0, 40, 0, 5000};
+    LevelStruct level_three = {3, 0, 0, 10, 10000};
+    LevelStruct* levels[3] = {&level_one, &level_two, &level_three};
+
+    // Show Level
+    Entity showLevel;
 
     // C++ random number generator
     std::default_random_engine rng;
