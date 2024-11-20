@@ -11,9 +11,6 @@
 #include "components.hpp"
 #include "tiny_ecs_registry.hpp"
 
-#include "distort.hpp"
-
-extern DistortToggle toggle;
 
 void RenderSystem::renderTextBulk(std::vector<TextRenderRequest>& requests)
 {
@@ -228,16 +225,13 @@ void RenderSystem::drawToScreen()
 	// get the water texture, sprite mesh, and program
 	glUseProgram(effects[(GLuint)EFFECT_ASSET_ID::WATER]);
 
-
 	GLuint distortion_on = glGetUniformLocation(effects[(GLuint)EFFECT_ASSET_ID::WATER], "distort_on");
 
-    if (toggle == DISTORT_ON) {
+    if (distortColor) {
         glUniform1i(distortion_on, 1);  
     } else {
         glUniform1i(distortion_on, 0); 
     }
-
-
 
 	gl_has_errors();
 	// Clearing backbuffer
@@ -294,6 +288,8 @@ void RenderSystem::drawToScreen()
 // http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-14-render-to-texture/
 void RenderSystem::draw(float elapsed_ms, bool isPaused)
 {
+	distortColor = false;
+
 	// Getting size of window
 	int w, h;
 	glfwGetFramebufferSize(window, &w, &h); // Note, this will be 2x the resolution given to glfwCreateWindow on retina displays
@@ -336,6 +332,8 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 		drawTutorial();
     }
     else if (ss.activeScreen == (int)SCREEN_ID::GAME_SCREEN) {
+		distortColor = true;
+
         for (Entity entity : registry.renderRequests.entities)
         {
             if (!registry.motions.has(entity) || registry.clickables.has(entity) || registry.players.has(entity)) 

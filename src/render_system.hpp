@@ -438,6 +438,8 @@ private:
     GLuint ges_shaderProgram;
     GLuint ges_VAO;
     GLuint ges_VBO;
+
+    bool distortColor = false;
 };
 
 bool loadEffectFromFile(

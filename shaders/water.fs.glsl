@@ -12,35 +12,18 @@ layout(location = 0) out vec4 color;
 
 vec2 distort(vec2 uv) 
 {
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	// TODO A1: HANDLE THE WATER DISTORTION HERE (you may want to try sin/cos)
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-		if (!distort_on) {
-		return uv;  
-	}
-
-	float horizontal_wave = 0.05 * sin(time * 0.07 + uv.y * 8.0) + 1.0; 
-    float vertical_wave = 0.05 * cos(time * 0.07 + uv.x * 8.0) + 1.0;
-
-	uv = (uv - 0.5f) * vec2(horizontal_wave, vertical_wave) + 0.5f; 
-
-    uv = clamp(uv, 0.0, 1.0);
-
-    return uv;
+	return uv;
 }
 
 vec4 color_shift(vec4 in_color) 
 {
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	// TODO A1: HANDLE THE COLOR SHIFTING HERE (you may want to make it blue-ish)
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 	if (!distort_on) {
 		return in_color;  
 	}
 
-	return in_color += 0.30 * vec4(0.1, 0.0, 0.3, 0); 
+	float wave = 0.01 * sin(time * 0.25) + 1.0;
+	in_color.x = clamp(in_color.x * wave, 0.0, 1.0);
+	return in_color;
 }
 
 vec4 fade_color(vec4 in_color) 
