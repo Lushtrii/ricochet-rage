@@ -64,6 +64,13 @@ void SaveGameToFile(RenderSystem* renderer)
             f << "enemy" << "\n";
             f << (int)enemy.enemyState << "\n";
         }
+        if (registry.meleeAttacks.has(e)) {
+            MeleeAttack &meleeAttack = registry.meleeAttacks.get(e);
+            f << "meleeAttack" << "\n";
+            f << meleeAttack.damage << "\n";
+            f << meleeAttack.windup << "\n";
+            f << meleeAttack.windupMax << "\n";
+        }
         if (registry.healths.has(e))
         {
             Health &h = registry.healths.get(e);
@@ -254,6 +261,13 @@ bool LoadGameFromFile(RenderSystem *renderer)
         {
             Enemy &enemy = registry.enemies.emplace(e);
             enemy.enemyState = static_cast<EnemyState>(LoadInt(f));
+        }
+        else if (line == "meleeAttack") 
+        {
+            MeleeAttack &m = registry.meleeAttacks.emplace(e);
+            m.damage = LoadInt(f);
+            m.windup = LoadFloat(f);
+            m.windupMax = LoadFloat(f);
         }
         else if (line == "health")
         {
