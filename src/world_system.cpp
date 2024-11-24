@@ -14,9 +14,10 @@
 #include "physics_system.hpp"
 
 
-const size_t TOTAL_NUM_ENEMIES = 20;      // total number of enemies in the game level
-const size_t MAX_NUM_ENEMIES = 10;        // maximum number of enemies on the screen
-const size_t ENEMY_SPAWN_DELAY_MS = 3000; // time between enemy spawns
+const size_t TOTAL_NUM_ENEMIES = 20;            // total number of enemies in the game level
+const size_t MAX_NUM_ENEMIES = 10;              // maximum number of enemies on the screen
+const size_t ENEMY_SPAWN_DELAY_MS = 3000;       // time between enemy spawns
+const size_t POWER_UP_SPAWN_DELAY_MS = 12500;   // time between power up spawns
 
 
 void WorldSystem::on_window_minimize(int minimized)
@@ -46,7 +47,7 @@ void WorldSystem::on_window_focus(int focused)
 
 // create the underwater world
 WorldSystem::WorldSystem()
-    : points(0), next_enemy_spawn(0.f)
+    : points(0), next_enemy_spawn(0.f), next_power_up_spawn(5.f)
 {
     // Seeding rng with random device
     rng = std::default_random_engine(std::random_device()());
@@ -64,6 +65,12 @@ WorldSystem::~WorldSystem()
         Mix_FreeChunk(enemy_death_sound);
     if (laser_shot_sound != nullptr)
         Mix_FreeChunk(laser_shot_sound);
+    if (invincibility_sound != nullptr)
+        Mix_FreeChunk(invincibility_sound);
+    if (super_bullets_sound != nullptr)
+        Mix_FreeChunk(super_bullets_sound);
+    if (health_stealer_sound != nullptr)
+        Mix_FreeChunk(health_stealer_sound);
 
     Mix_CloseAudio();
 
@@ -161,6 +168,9 @@ GLFWwindow *WorldSystem::create_window()
     player_death_sound = Mix_LoadWAV(audio_path("player-death-sound.wav").c_str());
     enemy_death_sound = Mix_LoadWAV(audio_path("enemy-death-sound.wav").c_str());
     laser_shot_sound = Mix_LoadWAV(audio_path("laser-shot-sound.wav").c_str());
+    invincibility_sound = Mix_LoadWAV(audio_path("invincibility.wav").c_str());
+    super_bullets_sound = Mix_LoadWAV(audio_path("super-bullets.wav").c_str());
+    health_stealer_sound = Mix_LoadWAV(audio_path("health-stealer.wav").c_str());
 
     if (background_music == nullptr || player_death_sound == nullptr || enemy_death_sound == nullptr || laser_shot_sound == nullptr)
     {
@@ -168,7 +178,10 @@ GLFWwindow *WorldSystem::create_window()
                 audio_path("background-music.wav").c_str(),
                 audio_path("player-death-sound.wav").c_str(),
                 audio_path("enemy-death-sound.wav").c_str(),
-                audio_path("laser-shot-sound.wav").c_str());
+                audio_path("laser-shot-sound.wav").c_str(),
+                audio_path("invincibility.wav").c_str(),
+                audio_path("super-bullets.wav").c_str(),
+                audio_path("health-stealer.wav").c_str());
         return nullptr;
     }
 
@@ -207,6 +220,39 @@ bool WorldSystem::mouseOverBox(vec2 mousePos, Entity entity)
     return (minX <= mousePos.x) && (mousePos.x <= maxX) && (minY <= mousePos.y) && (mousePos.y <= maxY);
 }
 
+vec2 WorldSystem::create_spawn_position()
+{
+    bool is_valid_spawn = false;
+    vec2 spawn_pos;
+
+    while (!is_valid_spawn)
+    {
+        spawn_pos = {
+            150.f + uniform_dist(rng) * (window_width_px - 300.f),
+            150.f + uniform_dist(rng) * (window_height_px - 300.f)};
+        is_valid_spawn = true;
+
+        // Check if it collides with the player
+        Motion &playerMotion = registry.motions.get(player);
+        if (length(playerMotion.position - spawn_pos) < 150.0f)
+        {
+            is_valid_spawn = false;
+        }
+
+        for (Entity entity : registry.walls.entities)
+        {
+            Motion &wall_motion = registry.motions.get(entity);
+            if (length(wall_motion.position - spawn_pos) < 100.f)
+            {
+                is_valid_spawn = false;
+                break;
+            }
+        }
+    }
+
+    return spawn_pos;
+}
+
 // Update our game world
 bool WorldSystem::step(float elapsed_ms_since_last_update)
 {
@@ -239,7 +285,6 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         title_ss << "Ricochet Rage | FPS: " << FPS;
         glfwSetWindowTitle(window, title_ss.str().c_str());
     }
-
    
     // Remove debug info from the last step
     while (registry.debugComponents.entities.size() > 0)
@@ -257,6 +302,36 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
                 registry.remove_all_components_of(entity);
             }
         }
+    }
+
+    int activePowerUpCount = 0;
+
+    for (Entity entity : registry.powerUps.entities) {
+        PowerUp &powerUp = registry.powerUps.get(entity);
+        if (powerUp.active) {
+            powerUp.active_timer -= elapsed_ms_since_last_update / 1000.f;
+            if (powerUp.active_timer < 0) {
+                registry.remove_all_components_of(entity);
+            } else {
+                if (powerUp.type == PowerUpType::INVINCIBILITY) {
+                    registry.colors.get(player) = {0.2f, 0.6f, 0.2f};
+                } else if (powerUp.type == PowerUpType::SUPER_BULLETS) {
+                    registry.colors.get(player) = {0.2f, 0.2f, 0.6f};
+                } else {
+                    registry.colors.get(player) = {0.3f, 0.2f, 0.3f};
+                }
+            }
+            activePowerUpCount++;
+        } else {
+            powerUp.available_timer -= elapsed_ms_since_last_update / 1000.f;
+            if (powerUp.available_timer < 0) {
+                registry.remove_all_components_of(entity);
+            }
+        }
+    }
+
+    if (activePowerUpCount == 0) {
+        registry.colors.get(player) = {1.f, 0.8f, 0.8f};
     }
 
     // Removing out of screen entities
@@ -335,34 +410,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     if (enemiesLeft && next_enemy_spawn < 0.f)
     {
         next_enemy_spawn = (curr_level_struct.enemy_spawn_time / 2) + uniform_dist(rng) * (curr_level_struct.enemy_spawn_time / 2);
-
-        bool is_valid_spawn = false;
-        vec2 spawn_pos;
-
-        while (!is_valid_spawn)
-        {
-            spawn_pos = {
-                150.f + uniform_dist(rng) * (window_width_px - 300.f),
-                150.f + uniform_dist(rng) * (window_height_px - 300.f)};
-            is_valid_spawn = true;
-
-            // Check if it collides with the player
-            Motion &playerMotion = registry.motions.get(player);
-            if (length(playerMotion.position - spawn_pos) < 150.0f)
-            {
-                is_valid_spawn = false;
-            }
-
-            for (Entity entity : registry.walls.entities)
-            {
-                Motion &wall_motion = registry.motions.get(entity);
-                if (length(wall_motion.position - spawn_pos) < 100.f)
-                {
-                    is_valid_spawn = false;
-                    break;
-                }
-            }
-        }
+        vec2 spawn_pos = create_spawn_position();
 
         // Deprecated for now
         // bool spawn_melee = uniform_dist(rng) < 0.5;
@@ -400,6 +448,22 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         currLevels.currStruct = levels[currLevels.current_level];
         restart_game();
         return true;
+    }
+
+    // spawn power ups
+    next_power_up_spawn -= elapsed_ms_since_last_update * current_speed;
+    if (next_power_up_spawn < 0.f)
+    {
+        next_power_up_spawn = POWER_UP_SPAWN_DELAY_MS;
+        vec2 spawn_pos = create_spawn_position();
+        float spawn_power_up = uniform_dist(rng);
+
+        if (spawn_power_up < 0.33)
+            createInvincibilityPowerUp(renderer, spawn_pos);
+        else if (spawn_power_up < 0.66)
+            createSuperBulletsPowerUp(renderer, spawn_pos);
+        else
+            createHealthStealerPowerUp(renderer, spawn_pos);
     }
 
     // Processing the player state
@@ -514,23 +578,50 @@ void WorldSystem::projectile_hit_character(Entity laser, Entity character)
     Health &health = registry.healths.get(character);
     Projectile &projectile = registry.projectiles.get(laser);
     bool is_player_projectile = projectile.is_player_projectile;
-    int damage = health.applyDamage(projectile.bounces_remaining, is_player_projectile);
+    bool is_character_player = registry.players.has(character);
+    bool causeDamage = true;
+    bool steal_health = false;
+    int damageMultiplier = 1;
 
-    // Show damage effect
-    vec3 color;
-    float scale;
+    for (Entity entity : registry.powerUps.entities)
+    {
+        PowerUp &powerUp = registry.powerUps.get(entity);
 
-    if (registry.players.has(character)) {
-        color = {1.f, 0.f, 0.133f};
-        scale = 1.5f;
-    } else {
-        color = {0.f, 1.f, 1.f};
-        scale = 1.f;
+        if (!powerUp.active)
+            continue;
+
+        if (powerUp.type == PowerUpType::INVINCIBILITY)
+            causeDamage = false;
+        else if (powerUp.type == PowerUpType::SUPER_BULLETS && !is_character_player)
+            damageMultiplier = 3;
+        else if (powerUp.type == PowerUpType::HEALTH_STEALER)
+            steal_health = true;
     }
-    
-    createText(renderer, "-" + std::to_string(damage), registry.motions.get(character).position, scale, color);
 
-    health_check(health, character);
+    // Deal damage to enemy always, to player only if invincibility is off
+    if ((causeDamage && is_character_player) || !is_character_player) {
+        int damage = health.applyDamage(projectile.bounces_remaining, is_player_projectile, damageMultiplier);
+
+        // Show damage effect
+        vec3 color;
+        float scale;
+
+        if (is_character_player) {
+            color = {1.f, 0.f, 0.133f};
+            scale = 1.5f;
+        } else {
+            color = {0.f, 1.f, 1.f};
+            scale = 1.f;
+        }
+        
+        createText(renderer, "-" + std::to_string(damage), registry.motions.get(character).position, scale, color);
+        health_check(health, character);
+
+        if (steal_health && !is_character_player) {
+            Health &playerHealth = registry.healths.get(player);
+            playerHealth.addHealth(damage);
+        }
+    }
 
     // Remove the projectile
     registry.remove_all_components_of(laser);
@@ -594,6 +685,20 @@ void WorldSystem::handle_collisions(float elapsed_ms)
                 !registry.deathTimers.has(entity))
             {
                 projectile_hit_character(entity_other, entity);
+            }
+
+            if (registry.powerUps.has(entity_other) && !registry.powerUps.get(entity_other).active)
+            {
+                PowerUp &powerUp = registry.powerUps.get(entity_other);
+                powerUp.active = true;
+                registry.renderRequests.remove(entity_other);
+
+                if (powerUp.type == PowerUpType::INVINCIBILITY)
+                    Mix_PlayChannel(-1, invincibility_sound, 0);
+                else if (powerUp.type == PowerUpType::SUPER_BULLETS)
+                    Mix_PlayChannel(-1, super_bullets_sound, 0);
+                else if (powerUp.type == PowerUpType::HEALTH_STEALER)
+                    Mix_PlayChannel(-1, health_stealer_sound, 0);
             }
         }
 

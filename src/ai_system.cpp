@@ -300,8 +300,18 @@ void AISystem::stop_and_melee(Entity &enemy, MeleeAttack &counter, float elapsed
 		counter.windup -= elapsed_ms;
 		Motion& enemyMotion = registry.motions.get(enemy);
 		enemyMotion.velocity = vec2(0.0f, 0.0f);
+
+		bool causeDamage = true;
+
+		for (Entity entity : registry.powerUps.entities) {
+			PowerUp &powerUp = registry.powerUps.get(entity);
+			if (powerUp.active && powerUp.type == PowerUpType::INVINCIBILITY) {
+				causeDamage = false;
+			}
+		}
+
 		if (counter.windup < 0) {
-			if (registry.healths.has(playerEntity)) {
+			if (registry.healths.has(playerEntity ) && causeDamage) {
 				Health &playerHealth = registry.healths.get(playerEntity);
 				Motion &playerMotion = registry.motions.get(playerEntity);
 				playerHealth.value -= counter.damage;

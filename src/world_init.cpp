@@ -135,7 +135,10 @@ void SaveGameToFile(RenderSystem* renderer)
         {
             PowerUp &p = registry.powerUps.get(e);
             f << "power_up" << "\n";
-            f << p.duration << "\n";
+            f << p.available_timer << "\n";
+            f << p.active_timer << "\n";
+            f << p.active << "\n";
+            f << (int)p.type << "\n";
         }
         if (registry.screenStates.has(e))
         {
@@ -208,6 +211,13 @@ bool LoadBool(std::ifstream &f)
     std::string line;
     getline(f, line);
     return std::stoi(line);
+}
+
+PowerUpType LoadPowerUpType(std::ifstream &f)
+{
+    std::string line;
+    getline(f, line);
+    return (PowerUpType) std::stoi(line);
 }
 
 bool LoadGameFromFile(RenderSystem *renderer)
@@ -329,7 +339,10 @@ bool LoadGameFromFile(RenderSystem *renderer)
         else if (line == "power_up")
         {
             PowerUp &p = registry.powerUps.emplace(e);
-            p.duration = LoadFloat(f);
+            p.available_timer = LoadFloat(f);
+            p.active_timer = LoadFloat(f);
+            p.active = LoadBool(f);
+            p.type = LoadPowerUpType(f);
         }
         else if (line == "screen_state")
         {
@@ -629,7 +642,9 @@ Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position)
     motion.position = position;
     motion.scale = vec2(POWERUP_BB_WIDTH, POWERUP_BB_HEIGHT) * scaleMultiplier;
 
-    registry.powerUps.emplace(entity);
+    PowerUp& powerUp = registry.powerUps.emplace(entity);
+    powerUp.type = PowerUpType::INVINCIBILITY;
+
     Animation &animation = registry.animations.emplace(entity);
     animation.sprite_height = 50;
     animation.sprite_width = 50;
@@ -641,6 +656,59 @@ Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position)
     return entity;
 }
 
+// create super bullets power up
+Entity createSuperBulletsPowerUp(RenderSystem *renderer, vec2 position)
+{
+    const float scaleMultiplier = 0.5;
+    auto entity = Entity();
+
+    Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
+    registry.meshPtrs.emplace(entity, &mesh);
+
+    Motion &motion = registry.motions.emplace(entity);
+    motion.position = position;
+    motion.scale = vec2(POWERUP_BB_WIDTH, POWERUP_BB_HEIGHT) * scaleMultiplier;
+
+    PowerUp& powerUp = registry.powerUps.emplace(entity);
+    powerUp.type = PowerUpType::SUPER_BULLETS;
+
+    Animation &animation = registry.animations.emplace(entity);
+    animation.sprite_height = 32;
+    animation.sprite_width = 32;
+    animation.num_frames = 1;
+    registry.renderRequests.insert(entity, {TEXTURE_ASSET_ID::SUPER_BULLETS,
+                                            EFFECT_ASSET_ID::TEXTURED,
+                                            GEOMETRY_BUFFER_ID::SPRITE});
+
+    return entity;
+}
+
+// create health stealer power up
+Entity createHealthStealerPowerUp(RenderSystem *renderer, vec2 position)
+{
+    const float scaleMultiplier = 0.5;
+    auto entity = Entity();
+
+    Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
+    registry.meshPtrs.emplace(entity, &mesh);
+
+    Motion &motion = registry.motions.emplace(entity);
+    motion.position = position;
+    motion.scale = vec2(POWERUP_BB_WIDTH, POWERUP_BB_HEIGHT) * scaleMultiplier;
+
+    PowerUp& powerUp = registry.powerUps.emplace(entity);
+    powerUp.type = PowerUpType::HEALTH_STEALER;
+
+    Animation &animation = registry.animations.emplace(entity);
+    animation.sprite_height = 32;
+    animation.sprite_width = 32;
+    animation.num_frames = 1;
+    registry.renderRequests.insert(entity, {TEXTURE_ASSET_ID::HEALTH_STEALER,
+                                            EFFECT_ASSET_ID::TEXTURED,
+                                            GEOMETRY_BUFFER_ID::SPRITE});
+
+    return entity;
+}
 
 Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 scale)
 {

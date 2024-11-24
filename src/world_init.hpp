@@ -22,15 +22,14 @@ void SaveGameToFile(RenderSystem *renderer);
 bool LoadGameFromFile(RenderSystem *renderer);
 bool doesSaveFileExist(RenderSystem *renderer);
 
-// the player
 Entity createPlayer(RenderSystem *renderer, vec2 pos);
 
-// the prey
 Entity createMeleeEnemy(RenderSystem *renderer, vec2 position);
+
 Entity createRangedEnemy(RenderSystem *renderer, vec2 position);
+
 Entity createBossEnemy(RenderSystem *renderer, vec2 position);
 
-// the game walls
 Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle);
 
 Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 size);
@@ -39,5 +38,10 @@ Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_p
 
 Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position);
 
+Entity createSuperBulletsPowerUp(RenderSystem *renderer, vec2 position);
+
+Entity createHealthStealerPowerUp(RenderSystem *renderer, vec2 position);
+
 Entity createText(RenderSystem *renderer, std::string text, vec2 position, float scale, vec3 color);
+
 Entity createText(RenderSystem *renderer, std::string text, vec2 position, float scale, vec3 color, bool timed);

@@ -66,12 +66,15 @@ private:
     void init_values();
     void restart_game();
 
+    vec2 create_spawn_position();
+
     // OpenGL window handle
     GLFWwindow *window;
 
     // Number of points attained by player, displayed in the window title
     unsigned int points;
     float next_enemy_spawn;
+    float next_power_up_spawn;
 
     // Game state
     RenderSystem *renderer;
@@ -89,6 +92,9 @@ private:
     Mix_Chunk *player_death_sound;
     Mix_Chunk *enemy_death_sound;
     Mix_Chunk *laser_shot_sound;
+    Mix_Chunk *invincibility_sound;
+    Mix_Chunk *super_bullets_sound;
+    Mix_Chunk *health_stealer_sound;
 
     LevelStruct level_one = {1, 80, 0, 0, 2000};
     LevelStruct level_two = {2, 0, 40, 0, 5000};

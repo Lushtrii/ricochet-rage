@@ -41,6 +41,8 @@ class RenderSystem
         textures_path("supercharged-projectile.png"),
         textures_path("wall.png"),
         textures_path("invincibility.png"),
+        textures_path("super-bullets.png"),
+        textures_path("health-stealer.png"),
         textures_path("ui/play-button.png"),
         textures_path("ui/tutorial-button.png"),
         textures_path("ui/exit-button.png"),

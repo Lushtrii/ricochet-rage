@@ -30,7 +30,12 @@ struct Health
 {
     int value = 100;
 
-    int applyDamage(int bounces_remaining, bool is_player_projectile)
+    void addHealth(int health)
+    {
+        value = min(100, value + health);
+    }
+
+    int applyDamage(int bounces_remaining, bool is_player_projectile, int damageMultiplier)
     {
         int damage;
 
@@ -43,7 +48,8 @@ struct Health
         
         if (!is_player_projectile)
             damage = 10;
-
+        
+        damage *= damageMultiplier;
         value = max(0, value - damage);
         return damage;
     }
@@ -107,9 +113,20 @@ struct Wall
 {
 };
 
+enum class PowerUpType
+{
+    INVINCIBILITY = 0,
+    SUPER_BULLETS = INVINCIBILITY + 1,
+    HEALTH_STEALER = SUPER_BULLETS + 1,
+    POWER_UP_COUNT = HEALTH_STEALER + 1
+};
+
 struct PowerUp
 {
-    float duration = 5;
+    float available_timer = 10.f;
+    float active_timer = 10.f;
+    bool active = false;
+    PowerUpType type;
 };
 
 struct Dash
@@ -324,7 +341,9 @@ enum class TEXTURE_ASSET_ID
     PROJECTILE_SUPER_CHARGED = PROJECTILE_CHARGED + 1,
     WALL = PROJECTILE_SUPER_CHARGED + 1,
     INVINCIBILITY = WALL + 1,
-    PLAY_BUTTON = INVINCIBILITY + 1,
+    SUPER_BULLETS = INVINCIBILITY + 1,
+    HEALTH_STEALER = SUPER_BULLETS + 1,
+    PLAY_BUTTON = HEALTH_STEALER + 1,
     TUTORIAL_BUTTON = PLAY_BUTTON + 1,
     EXIT_BUTTON = TUTORIAL_BUTTON + 1,
     BUTTON_BORDER = EXIT_BUTTON + 1,
