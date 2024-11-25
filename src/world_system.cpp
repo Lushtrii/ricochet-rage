@@ -258,7 +258,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
 {
     // Show Current Level
     if (!registry.texts.has(showLevel)) {
-        showLevel = createText(renderer, "Level " + std::to_string(currLevels.current_level + 1), vec2(window_width_px/2 - 25.0f, 40.0f), 2.0f, {1.0, 0.0, 0.0}, false);
+        showLevel = createText(renderer, "Level " + std::to_string(currLevels.current_level + 1), vec2(window_width_px/2 + 450.0f, 80.0f), 2.0f, {1.0, 0.0, 0.0}, false);
     } else {
         Text &showLevelText = registry.texts.get(showLevel);
         showLevelText.text = "Level " + std::to_string(currLevels.current_level + 1);
@@ -614,7 +614,11 @@ void WorldSystem::projectile_hit_character(Entity laser, Entity character)
             scale = 1.f;
         }
         
-        createText(renderer, "-" + std::to_string(damage), registry.motions.get(character).position, scale, color);
+        Motion& playerMotion = registry.motions.get(registry.players.entities[0]);
+        int cameraOffsetX = window_width_px/2 - playerMotion.position.x;
+        int cameraOffsetY = window_height_px/2 - (window_height_px - playerMotion.position.y);
+        vec2 cameraOffset = vec2(cameraOffsetX, -cameraOffsetY);
+        createText(renderer, "-" + std::to_string(damage), registry.motions.get(character).position + cameraOffset, scale, color);
         health_check(health, character);
 
         if (steal_health && !is_character_player) {
@@ -979,7 +983,11 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
         if (registry.deathTimers.has(player))
             return;
         Motion &motion = registry.motions.get(player);
-        vec2 direction = motion.position - mouse_position;
+        int cameraOffsetX = window_width_px/2 - motion.position.x;
+        // Motion.position assumes top right is (window_width_px, window_height_px) when the y axis is actually flipped, so negative offset
+        int cameraOffsetY = -(window_height_px/2 - (window_height_px - motion.position.y));
+        vec2 cameraOffset = vec2(cameraOffsetX, cameraOffsetY);
+        vec2 direction = (motion.position + cameraOffset) - mouse_position;
         vec2 direction_normalized = normalize(direction);
         float angle = atan2(direction_normalized.y, direction_normalized.x);
         motion.angle = angle;

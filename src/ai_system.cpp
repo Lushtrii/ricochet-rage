@@ -315,7 +315,11 @@ void AISystem::stop_and_melee(Entity &enemy, MeleeAttack &counter, float elapsed
 				Health &playerHealth = registry.healths.get(playerEntity);
 				Motion &playerMotion = registry.motions.get(playerEntity);
 				playerHealth.value -= counter.damage;
-				createText(renderer_arg, "-" + std::to_string(counter.damage), playerMotion.position, 1.5f, {1.f, 0.f, 0.133f});
+                int cameraOffsetX = window_width_px/2 - playerMotion.position.x;
+                int cameraOffsetY = window_height_px/2 - (window_height_px - playerMotion.position.y);
+                vec2 cameraOffset = vec2(cameraOffsetX, -cameraOffsetY);
+
+				createText(renderer_arg, "-" + std::to_string(counter.damage), playerMotion.position + cameraOffset, 1.5f, {1.f, 0.f, 0.133f});
 				if (registry.damageEffect.has(playerEntity)) {
 					DamageEffect &effect = registry.damageEffect.get(playerEntity);
 					effect.is_attacked = true;

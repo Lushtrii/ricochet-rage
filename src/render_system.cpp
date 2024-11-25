@@ -235,12 +235,25 @@ void RenderSystem::drawToScreen()
 
 	gl_has_errors();
 	// Clearing backbuffer
+
+    
 	int w, h;
 	glfwGetFramebufferSize(window, &w, &h); // Note, this will be 2x the resolution given to glfwCreateWindow on retina displays
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glViewport(0, 0, w, h);
+
+    const ScreenState& ss = registry.screenStates.get(screen_state_entity);
+    // NOTE: pause screen will need changes
+    int lowerLeftCornerX = 0;
+    int lowerLeftCornerY = 0;
+    Motion& m = registry.motions.get(registry.players.entities[0]);
+    if (ss.activeScreen == (int)SCREEN_ID::GAME_SCREEN || ss.activeScreen == (int) SCREEN_ID::PAUSE_SCREEN) {
+        lowerLeftCornerX = window_width_px/2 - m.position.x;
+        lowerLeftCornerY = window_height_px/2 - (window_height_px - m.position.y);
+
+    }
+	glViewport(lowerLeftCornerX, lowerLeftCornerY, w, h);
 	glDepthRange(0, 10);
-	glClearColor(1.f, 0, 0, 1.0);
+	glClearColor(0.f, 0, 0, 1.0);
 	glClearDepth(1.f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	gl_has_errors();
@@ -301,13 +314,11 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 	// Clearing backbuffer
 	glViewport(0, 0, w, h);
 	glDepthRange(0.00001, 10);
-	//glClearColor(GLfloat(172 / 255), GLfloat(216 / 255), GLfloat(255 / 255), 1.0);
 
-	/* glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // black space background */
-	glClearColor(0.75f, 0.75f, 0.75f, 1.0f); 
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // black space background
+	glClearColor(0.75f, 0.75f, 0.75f, 1.0f); // black space background
 
 	glClearDepth(10.f);
-	/* glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); */
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -331,12 +342,12 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 	else if (ss.activeScreen == (int)SCREEN_ID::TUTORIAL_SCREEN) {
 		drawTutorial();
     }
-    else if (ss.activeScreen == (int)SCREEN_ID::GAME_SCREEN) {
+    else if (ss.activeScreen == (int)SCREEN_ID::GAME_SCREEN || ss.activeScreen == (int) SCREEN_ID::PAUSE_SCREEN) {
 		distortColor = true;
 
         for (Entity entity : registry.renderRequests.entities)
         {
-            if (!registry.motions.has(entity) || registry.clickables.has(entity) || registry.players.has(entity)) 
+            if (!registry.motions.has(entity) || registry.clickables.has(entity) || registry.players.has(entity) || entity == hoverEntity) 
                 continue;
             // Note, its not very efficient to access elements indirectly via the entity
             // albeit iterating through all Sprites in sequence. A good point to optimize
@@ -353,22 +364,6 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
         drawTexturedMesh(player, projection_2D);
         
         glBindVertexArray(vao);
-    }
-    else if (ss.activeScreen == (int)SCREEN_ID::PAUSE_SCREEN) {
-        for (Entity entity : registry.renderRequests.entities)
-        {
-            if (!registry.motions.has(entity) || registry.clickables.has(entity))
-                continue;
-            // Note, its not very efficient to access elements indirectly via the entity
-            // albeit iterating through all Sprites in sequence. A good point to optimize
-
-            if (registry.animations.has(entity)) {
-                drawTexturedMeshWithAnim(entity, projection_2D, registry.animations.get(entity));
-            }
-            drawTexturedMesh(entity, projection_2D);
-        }
-        lightScreen();
-        drawPauseMenu();
     }
     else if (ss.activeScreen == (int) SCREEN_ID::DEATH_SCREEN) {
         drawDeathScreen();
@@ -389,6 +384,7 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 		glBindVertexArray(0);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glViewport(0, 0, w, h);
 
 		std::vector<TextRenderRequest> texts = {};
 
@@ -402,6 +398,13 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 		}
 		drawMouseGestures();
 	}
+
+    else if (ss.activeScreen == (int) SCREEN_ID::PAUSE_SCREEN) {
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glViewport(0, 0, window_width_px, window_height_px);
+        drawPauseMenu();
+    }
 
 	// flicker-free display with a double buffer
 	glfwSwapBuffers(window);
@@ -641,7 +644,6 @@ void RenderSystem::drawPauseMenu() {
 	// no offset from the bound index buffer
 
     drawButtons();
-
 
 	gl_has_errors();
 
