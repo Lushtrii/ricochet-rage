@@ -81,7 +81,10 @@ bool RenderSystem::init(GLFWwindow* window_arg)
     initDeathScreen();
     initWinScreen();
 
-    initLight();
+    if (LIGHT_SYSTEM_TOGGLE) {
+        initLight();
+    }
+
 
 	return true;
 }

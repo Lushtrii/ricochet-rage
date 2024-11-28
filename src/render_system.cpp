@@ -357,7 +357,9 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
             }
             drawTexturedMesh(entity, projection_2D);
         }
-        lightScreen();
+        if (LIGHT_SYSTEM_TOGGLE) {
+            lightScreen();
+        }
         // Draw player AFTER shadow has been cast so it is not shaded
         Entity player = registry.players.entities[0];
         drawTexturedMeshWithAnim(player, projection_2D, registry.animations.get(player));

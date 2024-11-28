@@ -443,6 +443,7 @@ private:
     GLuint ges_VBO;
 
     bool distortColor = false;
+    bool LIGHT_SYSTEM_TOGGLE = false;
 };
 
 bool loadEffectFromFile(
