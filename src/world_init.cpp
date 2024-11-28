@@ -178,6 +178,14 @@ void SaveGameToFile(RenderSystem* renderer)
             f << t.starting_time << "\n";
             f << t.max_time << "\n";
         }
+        if (registry.necromancers.has(e))
+        {
+            Necromancer &necro = registry.necromancers.get(e);
+            f << "necromancer" << "\n";
+            f << necro.spawningMinions << "\n";
+            f << necro.centerPosition.x << "\n";
+            f << necro.centerPosition.y << "\n";
+        }
         // Save current level
         f << "currentlevel" << "\n";
         f << currLevels.current_level << "\n";
@@ -383,6 +391,13 @@ bool LoadGameFromFile(RenderSystem *renderer)
             currLevels.current_level = LoadInt(f);
             currLevels.total_level_index = LoadInt(f);
         }
+        else if (line == "necromancer")
+        {
+            Necromancer &n = registry.necromancers.emplace(e);
+            n.spawningMinions = LoadBool(f);
+            n.centerPosition.x = LoadFloat(f);
+            n.centerPosition.y = LoadFloat(f);
+        }
     }
 
     return true;
@@ -513,7 +528,7 @@ Entity createRangedEnemy(RenderSystem *renderer, vec2 position)
 }
 
 // Create Boss Enemy
-Entity createBossEnemy(RenderSystem *renderer, vec2 position) {
+Entity createCowboyBossEnemy(RenderSystem *renderer, vec2 position) {
     auto entity = Entity();
 
     // Store a reference to the potentially re-used mesh object (the value is stored in the resource cache)
@@ -559,6 +574,147 @@ Entity createBossEnemy(RenderSystem *renderer, vec2 position) {
     registry.renderRequests.insert(
         entity,
         {TEXTURE_ASSET_ID::BOSS_ENEMY,
+         EFFECT_ASSET_ID::TEXTURED,
+         GEOMETRY_BUFFER_ID::SPRITE});
+
+    return entity;
+}
+
+// Create Necromancer Enemy
+Entity createNecromancerEnemy(RenderSystem *renderer, vec2 position) {
+    auto entity = Entity();
+
+    // Store a reference to the potentially re-used mesh object (the value is stored in the resource cache)
+    Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
+    registry.meshPtrs.emplace(entity, &mesh);
+
+    // Setting enemy health
+    Health& bossHealth = registry.healths.emplace(entity);
+    bossHealth.value = 300;
+
+    // Initialize the motion
+    auto &motion = registry.motions.emplace(entity);
+    motion.angle = 0.f;
+    motion.velocity = {0.f, 0.f};
+    motion.position = position;
+
+    float multiplier = 0.75f;
+    // Setting initial values, scale is negative to make it face the opposite way
+    motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, multiplier * ENEMY_BB_HEIGHT});
+
+    // create an empty enemies component
+    registry.enemies.emplace(entity);
+
+    // Make more rapid attacks but more time in between
+    ReloadTime& bossReload = registry.reloadTimes.emplace(entity);
+
+    // Also a melee enemy
+    registry.meleeAttacks.emplace(entity);
+    registry.teleporters.emplace(entity);
+
+    registry.bosses.emplace(entity);
+    registry.necromancers.emplace(entity);
+
+    Animation &animation = registry.animations.emplace(entity);
+    animation.sprite_height = 32;
+    animation.sprite_width = 32;
+    animation.num_frames = 5;
+
+    // Add raycasting to the enemy
+    LineOfSight &raycast = registry.lightOfSight.emplace(entity);
+    raycast.ray_distance = 1000;
+    raycast.ray_width = ENEMY_BB_WIDTH;
+
+    registry.renderRequests.insert(
+        entity,
+        {TEXTURE_ASSET_ID::NECROMANCER_ENEMY,
+         EFFECT_ASSET_ID::TEXTURED,
+         GEOMETRY_BUFFER_ID::SPRITE});
+
+    return entity;
+}
+
+// Create a melee minion that deals less damage
+Entity createMeleeMinion(RenderSystem *renderer, vec2 position)
+{
+    auto entity = Entity();
+
+    // Store a reference to the potentially re-used mesh object (the value is stored in the resource cache)
+    Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
+    registry.meshPtrs.emplace(entity, &mesh);
+
+    // Setting enemy health
+    registry.healths.insert(entity, {25});
+
+    // Initialize the motion
+    auto &motion = registry.motions.emplace(entity);
+    motion.angle = 0.f;
+    motion.velocity = {0.f, 0.f};
+    motion.position = position;
+
+    float multiplier = 0.3f;
+    // Setting initial values, scale is negative to make it face the opposite way
+    motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, multiplier * ENEMY_BB_HEIGHT});
+
+    // create an empty enemies component
+    registry.enemies.emplace(entity);
+    registry.meleeAttacks.emplace(entity);
+    Animation &animation = registry.animations.emplace(entity);
+    animation.sprite_height = 32;
+    animation.sprite_width = 32;
+    animation.num_frames = 5;
+
+    // Add raycasting to the enemy
+    LineOfSight &raycast = registry.lightOfSight.emplace(entity);
+    raycast.ray_distance = 1000;
+    raycast.ray_width = ENEMY_BB_WIDTH;
+
+    registry.renderRequests.insert(
+        entity,
+        {TEXTURE_ASSET_ID::MELEE_ENEMY,
+         EFFECT_ASSET_ID::TEXTURED,
+         GEOMETRY_BUFFER_ID::SPRITE});
+
+    return entity;
+}
+
+Entity createRangedMinion(RenderSystem *renderer, vec2 position)
+{
+    auto entity = Entity();
+
+    // Store a reference to the potentially re-used mesh object (the value is stored in the resource cache)
+    Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
+    registry.meshPtrs.emplace(entity, &mesh);
+
+    // Setting enemy health
+    registry.healths.insert(entity, {25});
+
+    // Initialize the motion
+    auto &motion = registry.motions.emplace(entity);
+    motion.angle = 0.f;
+    motion.velocity = {0.f, 0.f};
+    motion.position = position;
+
+    float multiplier = 0.3f;
+    // Setting initial values, scale is negative to make it face the opposite way
+    motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, multiplier * ENEMY_BB_HEIGHT});
+
+    // create an empty enemies component
+    registry.enemies.emplace(entity);
+    registry.reloadTimes.emplace(entity);
+    Animation &animation = registry.animations.emplace(entity);
+    animation.sprite_height = 32;
+    animation.sprite_width = 32;
+    animation.num_frames = 5;
+
+    // Add raycasting to the enemy
+    LineOfSight &raycast = registry.lightOfSight.emplace(entity);
+    raycast.ray_distance = 1000;
+    raycast.ray_width = ENEMY_BB_WIDTH;
+
+    registry.renderRequests.insert(
+        entity,
+        {TEXTURE_ASSET_ID::RANGED_ENEMY,
          EFFECT_ASSET_ID::TEXTURED,
          GEOMETRY_BUFFER_ID::SPRITE});
 

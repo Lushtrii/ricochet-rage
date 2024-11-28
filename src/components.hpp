@@ -17,7 +17,8 @@ enum class EnemyState
     PURSUING = ROAMING + 1,
     AVOIDWALL = PURSUING + 1,
     ATTACK = AVOIDWALL + 1,
-    TELEPORTING = ATTACK + 1
+    TELEPORTING = ATTACK + 1,
+    SPAWN_MINIONS = TELEPORTING + 1
 };
 
 // anything that is deadly to the player
@@ -95,6 +96,12 @@ struct DamageEffect
 
 struct Boss
 {
+};
+
+struct Necromancer
+{
+    bool spawningMinions = false;
+    vec2 centerPosition = vec2(0.0f, 0.0f);
 };
 
 struct Teleporter
@@ -354,7 +361,8 @@ enum class TEXTURE_ASSET_ID
     CONTINUE_BUTTON = PLAY_AGAIN_BUTTON + 1,
     HEALTH_BAR = CONTINUE_BUTTON + 1,
     BOSS_ENEMY = HEALTH_BAR + 1,
-    TEXTURE_COUNT = BOSS_ENEMY + 1,
+    NECROMANCER_ENEMY = BOSS_ENEMY + 1,
+    TEXTURE_COUNT = NECROMANCER_ENEMY + 1,
 };
 const int texture_count = (int)TEXTURE_ASSET_ID::TEXTURE_COUNT;
 

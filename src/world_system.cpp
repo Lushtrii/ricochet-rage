@@ -426,7 +426,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         } 
         else if (curr_level_struct.num_boss >= 1)
         {
-            createBossEnemy(renderer, spawn_pos);
+            createCowboyBossEnemy(renderer, spawn_pos);
             curr_level_struct.num_boss--;
         }
     }
@@ -533,6 +533,8 @@ void WorldSystem::restart_game()
     init_values();
     registry.colors.insert(player, {1, 0.8f, 0.8f});
     update_player_move_dir();
+
+    createNecromancerEnemy(renderer, {window_width_px / 2 + 210, window_height_px / 2});
 
     // create the game walls
     createWall(renderer, vec2(window_width_px / 2.f, window_height_px / 2.f), vec2(100, 100), 0);

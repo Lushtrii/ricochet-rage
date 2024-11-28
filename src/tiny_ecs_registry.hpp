@@ -42,6 +42,7 @@ public:
     ComponentContainer<Teleporter> teleporters;
     ComponentContainer<Teleporting> teleporting;
     ComponentContainer<Light> lights;
+    ComponentContainer<Necromancer> necromancers;
 
     // constructor that adds all containers for looping over them
     // IMPORTANT: Don't forget to add any newly added containers!
@@ -76,6 +77,7 @@ public:
         registry_list.push_back(&teleporters);
         registry_list.push_back(&teleporting);
         registry_list.push_back(&lights);
+        registry_list.push_back(&necromancers);
     }
 
     void clear_all_components()

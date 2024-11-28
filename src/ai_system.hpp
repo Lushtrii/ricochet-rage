@@ -14,6 +14,8 @@ public:
 	void init(RenderSystem *renderer_arg);
     void step(float elapsed_ms);
 
+    void spawn_minions(glm::vec2 &position);
+
     void teleport_boss(Entity &enemy, Motion &playerMotion, EnemyState &enemyState);
 
 private:
@@ -46,6 +48,7 @@ private:
     const float los_increment = 50.0f;
     const float shotgun_angle = M_PI/8.0f;
     const float tp_to_player_range = 300.0f;
+    const float minionDistance = 90.0f;
 
     // C++ random number generator
     std::default_random_engine rng;

@@ -73,7 +73,7 @@ void AISystem::step(float elapsed_ms)
 					enemyState = EnemyState::PURSUING;
 				} else {
 					ReloadTime &counter = registry.reloadTimes.get(enemy);
-					stop_and_shoot(enemy, counter, elapsed_ms, playerMotion, true);
+					stop_and_shoot(enemy, counter, elapsed_ms, playerMotion, !registry.necromancers.has(enemy));
 				}
 			}
 			else if (registry.reloadTimes.has(enemy)) {
@@ -104,6 +104,26 @@ void AISystem::step(float elapsed_ms)
 					bossTeleport.animation_time = bossTeleport.max_teleport_time;
 				}
             }
+		} else if (enemyState == EnemyState::SPAWN_MINIONS) {
+			Motion &enemyMotion = registry.motions.get(enemy);
+
+			Necromancer& necroComp = registry.necromancers.get(enemy);
+			necroComp.centerPosition = enemyMotion.position;
+			necroComp.spawningMinions = true;
+
+			// Reset time
+            ReloadTime &counter = registry.reloadTimes.get(enemy);
+            counter.counter_ms = original_ms;
+			enemyState = EnemyState::PURSUING;
+		}
+	}
+
+	// Spawn minions outside of loop, or it will crash
+	for (Entity &necro: registry.necromancers.entities) {
+		Necromancer& necroComp = registry.necromancers.get(necro);
+		if (necroComp.spawningMinions) {
+			spawn_minions(necroComp.centerPosition);
+			necroComp.spawningMinions = false;
 		}
 	}
 
@@ -113,6 +133,36 @@ void AISystem::step(float elapsed_ms)
 		Teleporting &teleportingComp = registry.teleporting.get(teleporting);
 		bossMotion.scale = bossMotion.scale * quadratic_bezier(teleportingComp.starting_time, teleportingComp.max_time);
 		teleportingComp.starting_time += elapsed_ms;
+	}
+}
+
+// Prevent collision with obstacles
+bool wall_distance_helper(vec2 &position) {
+	for (Entity &wall: registry.walls.entities) {
+		Motion& wallMotion = registry.motions.get(wall);
+		if (length(position - wallMotion.position) <  75.f) {
+			return false;
+		}
+	}
+	return true;
+}
+
+void AISystem::spawn_minions(glm::vec2 &position)
+{
+	vec2 possiblePositions[4] = {vec2(position.x - minionDistance, position.y),
+		vec2(position.x + minionDistance, position.y),
+		vec2(position.x, position.y - minionDistance),
+		vec2(position.x, position.y + minionDistance)};
+
+	for (int i = 0; i < 4; i++) {
+		if (wall_distance_helper(possiblePositions[i])) {
+			int minionTypeRand = rand() % 2;
+			if (minionTypeRand == 0) {
+				createMeleeMinion(renderer_arg, possiblePositions[i]);
+			} else {
+				createRangedMinion(renderer_arg, possiblePositions[i]);
+			}
+		}
 	}
 }
 
@@ -146,7 +196,11 @@ void AISystem::teleport_boss(Entity &enemy, Motion &playerMotion, EnemyState &en
         }
     }
     enemyMotion.position = spawn_pos;
-    enemyState = EnemyState::ATTACK;
+	if (registry.necromancers.has(enemy)) {
+		enemyState = EnemyState::SPAWN_MINIONS;
+	} else {
+		enemyState = EnemyState::ATTACK;
+	}
 }
 
 // Pursuing logic for a ranged enemy, including shoot

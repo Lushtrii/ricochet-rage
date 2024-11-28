@@ -28,7 +28,7 @@ Entity createMeleeEnemy(RenderSystem *renderer, vec2 position);
 
 Entity createRangedEnemy(RenderSystem *renderer, vec2 position);
 
-Entity createBossEnemy(RenderSystem *renderer, vec2 position);
+Entity createCowboyBossEnemy(RenderSystem *renderer, vec2 position);
 
 Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle);
 
@@ -45,3 +45,9 @@ Entity createHealthStealerPowerUp(RenderSystem *renderer, vec2 position);
 Entity createText(RenderSystem *renderer, std::string text, vec2 position, float scale, vec3 color);
 
 Entity createText(RenderSystem *renderer, std::string text, vec2 position, float scale, vec3 color, bool timed);
+
+Entity createNecromancerEnemy(RenderSystem *renderer, vec2 position);
+
+Entity createMeleeMinion(RenderSystem *renderer, vec2 position);
+
+Entity createRangedMinion(RenderSystem *renderer, vec2 position);
