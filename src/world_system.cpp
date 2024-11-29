@@ -995,24 +995,26 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
         motion.angle = angle;
 
         // Deal with mouse gestures
-        if (mouseGestures.isHeld) {
-            mouseGestures.gesturePath.push_back(mouse_position);
-            mouseGestures.renderPath.push_back(vec2(mouse_position.x, window_height_px - mouse_position.y));
-            mouseGestures.lastPosition = mouse_position;
-        } else {
-            if (!mouseGestures.gesturePath.empty()) {
-                if (detect_heart_shape()) {
-                    // Heal the player
-                    Health& playerHealth = registry.healths.get(player);
-                    playerHealth.value = min(playerHealth.value + 50, 100);
-                    createText(renderer, "+ 50", registry.motions.get(player).position, 1.5f, {0.0, 1.0, 0.0});
+        if (mouseGestures.isToggled) {
+            if (mouseGestures.isHeld) {
+                mouseGestures.gesturePath.push_back(mouse_position);
+                mouseGestures.renderPath.push_back(vec2(mouse_position.x, window_height_px - mouse_position.y));
+                mouseGestures.lastPosition = mouse_position;
+            } else {
+                if (!mouseGestures.gesturePath.empty()) {
+                    if (detect_heart_shape()) {
+                        // Heal the player
+                        Health& playerHealth = registry.healths.get(player);
+                        playerHealth.value = min(playerHealth.value + 50, 100);
+                        createText(renderer, "+ 50", registry.motions.get(player).position, 1.5f, {0.0, 1.0, 0.0});
+                    }
                 }
+                // Just delete everything from the gesturePath
+                mouseGestures.gesturePath.clear();
+                mouseGestures.gesturePath.shrink_to_fit();
+                mouseGestures.renderPath.clear();
+                mouseGestures.renderPath.shrink_to_fit();
             }
-            // Just delete everything from the gesturePath
-            mouseGestures.gesturePath.clear();
-            mouseGestures.gesturePath.shrink_to_fit();
-            mouseGestures.renderPath.clear();
-            mouseGestures.renderPath.shrink_to_fit();
         }
     }
 }
@@ -1106,7 +1108,7 @@ void WorldSystem::on_mouse_click(int button, int action, int mods)
     // Mouse Gestures for healing
     bool rightClicked = button == GLFW_MOUSE_BUTTON_RIGHT;
     bool ctrlClicked = button == GLFW_MOUSE_BUTTON_LEFT && (mods & GLFW_MOD_CONTROL);
-    if ((rightClicked || ctrlClicked) && !registry.deathTimers.has(player) && activeScreen == (int) SCREEN_ID::GAME_SCREEN) {
+    if (mouseGestures.isToggled && (rightClicked || ctrlClicked) && !registry.deathTimers.has(player) && activeScreen == (int) SCREEN_ID::GAME_SCREEN) {
         mouseGestures.isHeld = action == GLFW_PRESS;
     }
 }

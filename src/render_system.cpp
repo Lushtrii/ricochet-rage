@@ -398,7 +398,9 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 		if (!texts.empty()) {
 			renderTextBulk(texts);
 		}
-		drawMouseGestures();
+		if (mouseGestures.isToggled) {
+			drawMouseGestures();
+		}
 	}
 
     else if (ss.activeScreen == (int) SCREEN_ID::PAUSE_SCREEN) {

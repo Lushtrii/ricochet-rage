@@ -295,6 +295,7 @@ struct MouseGestures {
     float threshold = 100.0f;
     float peakThreshold = 200.0f;
     int minSize = 20;
+    bool isToggled = false;
 };
 extern MouseGestures mouseGestures;
 
