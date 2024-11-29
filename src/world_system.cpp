@@ -709,7 +709,42 @@ void WorldSystem::handle_collisions(float elapsed_ms)
             if (registry.enemies.has(entity_other) || registry.walls.has(entity_other))
             {
                 Motion &playerMotion = registry.motions.get(entity);
-                playerMotion.position -= playerMotion.last_physic_move;
+                Motion &wallMotion = registry.motions.get(entity_other);
+
+                vec2 diff = playerMotion.position - wallMotion.position;
+                vec2 wallNorm;
+
+                if (abs(diff.y / wallMotion.scale.y) < abs(diff.x / wallMotion.scale.x)) {
+                    wallNorm = {1.0f, 0.0f};
+                } else {
+                    wallNorm = {0.0f, 1.0f};
+                }
+
+                vec2 slideVelocity = playerMotion.velocity - dot(playerMotion.velocity, wallNorm) * wallNorm;
+
+                float bufferGap = 1.0f;
+                float xOverlap = (playerMotion.scale.x / 2 + wallMotion.scale.x / 2 - playerMotion.scale.x + bufferGap) - abs(diff.x);
+                float yOverlap = (playerMotion.scale.y / 2 + wallMotion.scale.y / 2 + bufferGap) - abs(diff.y);
+
+     
+                if (wallNorm.x == 1.0f && xOverlap > 0) {  
+                
+                if (diff.x < 0) {                     
+                    playerMotion.position.x -= xOverlap;
+                } else {
+                    playerMotion.position.x += xOverlap;
+                }
+                    playerMotion.velocity.x = slideVelocity.x;
+
+                } else if (wallNorm.y == 1.0f && yOverlap > 0) {  
+                
+                if (diff.y < 0) {                             
+                    playerMotion.position.y -= yOverlap;
+                } else {
+                    playerMotion.position.y += yOverlap;
+                }
+                    playerMotion.velocity.y = slideVelocity.y;
+                }
             }
 
             if (
@@ -767,8 +802,44 @@ void WorldSystem::handle_collisions(float elapsed_ms)
             {
                 if (registry.motions.has(entity))
                 {
-                    Motion &enemyMotion = registry.motions.get(entity);
-                    enemyMotion.position -= enemyMotion.last_physic_move;
+
+                Motion &enemyMotion = registry.motions.get(entity);
+                Motion &wallMotion = registry.motions.get(entity_other);
+
+                vec2 diff = enemyMotion.position - wallMotion.position;
+                vec2 wallNorm;
+
+                if (abs(diff.y / wallMotion.scale.y) < abs(diff.x / wallMotion.scale.x)) {
+                    wallNorm = {1.0f, 0.0f};
+                } else {
+                    wallNorm = {0.0f, 1.0f};
+                }
+
+                vec2 slideVelocity = enemyMotion.velocity - dot(enemyMotion.velocity, wallNorm) * wallNorm;
+
+                float bufferGap = 1.0f;
+                float xOverlap = (enemyMotion.scale.x / 2 + wallMotion.scale.x / 2 - enemyMotion.scale.x + bufferGap) - abs(diff.x);
+                float yOverlap = (enemyMotion.scale.y / 2 + wallMotion.scale.y / 2 + bufferGap) - abs(diff.y);
+
+     
+                if (wallNorm.x == 1.0f && xOverlap > 0) {  
+                
+                if (diff.x < 0) {                     
+                    enemyMotion.position.x -= xOverlap;
+                } else {
+                    enemyMotion.position.x += xOverlap;
+                }
+                    enemyMotion.velocity.x = slideVelocity.x;
+
+                } else if (wallNorm.y == 1.0f && yOverlap > 0) {  
+                
+                if (diff.y < 0) {                             
+                    enemyMotion.position.y -= yOverlap;
+                } else {
+                    enemyMotion.position.y += yOverlap;
+                }
+                    enemyMotion.velocity.y = slideVelocity.y;
+                }
                 }
             }
 
