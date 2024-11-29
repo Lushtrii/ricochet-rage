@@ -1,5 +1,6 @@
 // internal
 #include "render_system.hpp"
+#include <GLFW/glfw3.h>
 #include <SDL.h>
 #include <cmath>
 
@@ -241,23 +242,7 @@ void RenderSystem::drawToScreen()
 
 	gl_has_errors();
 	// Clearing backbuffer
-
-    
-	int w, h;
-	glfwGetFramebufferSize(window, &w, &h); // Note, this will be 2x the resolution given to glfwCreateWindow on retina displays
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    const ScreenState& ss = registry.screenStates.get(screen_state_entity);
-    // NOTE: pause screen will need changes
-    int lowerLeftCornerX = 0;
-    int lowerLeftCornerY = 0;
-    Motion& m = registry.motions.get(registry.players.entities[0]);
-    if (ss.activeScreen == (int)SCREEN_ID::GAME_SCREEN || ss.activeScreen == (int) SCREEN_ID::PAUSE_SCREEN) {
-        lowerLeftCornerX = window_width_px/2 - m.position.x;
-        lowerLeftCornerY = window_height_px/2 - (window_height_px - m.position.y);
-
-    }
-	glViewport(lowerLeftCornerX, lowerLeftCornerY, w, h);
 	glDepthRange(0, 10);
 	glClearColor(0.f, 0, 0, 1.0);
 	glClearDepth(1.f);
@@ -319,7 +304,6 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 	glViewport(0, 0, w, h);
 	glDepthRange(0.00001, 10);
 
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // black space background
 	glClearColor(0.75f, 0.75f, 0.75f, 1.0f); // black space background
 
 	glClearDepth(10.f);
@@ -332,7 +316,8 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 	gl_has_errors();
 
 
-	mat3 projection_2D = createProjectionMatrix();
+	/* mat3 projection_2D = createProjectionMatrix(); */
+	mat3 projection_2D = createCameraMatrix();
 
     if (!isPaused) {
         updateAnimations(elapsed_ms);
@@ -347,6 +332,10 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 		drawTutorial();
     }
     else if (ss.activeScreen == (int)SCREEN_ID::GAME_SCREEN || ss.activeScreen == (int) SCREEN_ID::PAUSE_SCREEN) {
+
+        drawGameBackground();
+        drawSpaceship();
+        drawFloor();
 
         for (Entity entity : registry.renderRequests.entities)
         {
@@ -382,14 +371,14 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 
     if (ss.activeScreen == (int)SCREEN_ID::GAME_SCREEN)
 	{
-		int w, h;
-		glfwGetWindowSize(window, &w, &h);
-
 		// Render text
 		glBindVertexArray(0);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glViewport(0, 0, w, h);
+
+		int w, h;
+		glfwGetWindowSize(window, &w, &h);
 
 		std::vector<TextRenderRequest> texts = {};
 
@@ -409,7 +398,9 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
     else if (ss.activeScreen == (int) SCREEN_ID::PAUSE_SCREEN) {
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glViewport(0, 0, window_width_px, window_height_px);
+		int w, h;
+		glfwGetFramebufferSize(window, &w, &h);
+        glViewport(0, 0, w, h);
         drawPauseMenu();
     }
 
@@ -417,6 +408,8 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 	glfwSwapBuffers(window);
 	gl_has_errors();
 }
+
+
 
 void RenderSystem::drawMouseGestures() {
     glUseProgram(ges_shaderProgram);
@@ -601,6 +594,29 @@ mat3 RenderSystem::createProjectionMatrix()
 	return {{sx, 0.f, 0.f}, {0.f, sy, 0.f}, {tx, ty, 1.f}};
 }
 
+mat3 RenderSystem::createCameraMatrix()
+{
+	// Fake projection matrix, scales with respect to window coordinates
+
+    int w, h;
+    glfwGetFramebufferSize(window, &w, &h);
+    Entity p = registry.players.entities[0];
+    Motion& m = registry.motions.get(p);
+
+	float left = m.position.x - w/2;
+	float top = m.position.y - h/2;
+
+	gl_has_errors();
+	float right = m.position.x + w/2;
+	float bottom = m.position.y + h/2;
+
+	float sx = 2.f / (right - left);
+	float sy = 2.f / (top - bottom);
+	float tx = -(right + left) / (right - left);
+	float ty = -(top + bottom) / (top - bottom);
+	return {{sx, 0.f, 0.f}, {0.f, sy, 0.f}, {tx, ty, 1.f}};
+}
+
 void RenderSystem::setActiveScreen(int activeScreen) {
     ScreenState& ss = registry.screenStates.get(screen_state_entity);
     ss.activeScreen = activeScreen;
@@ -746,6 +762,205 @@ void RenderSystem::drawWinScreen() {
 
 }
 
+void RenderSystem::drawGameBackground() {
+    const GLuint program = effects[(GLuint)EFFECT_ASSET_ID::TEXTURED];
+	glUseProgram(program);
+	gl_has_errors();
+	// Draw the screen texture on the quad geometry
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers[(GLuint)GEOMETRY_BUFFER_ID::UI_COMPONENT]);
+	glBindBuffer(
+		GL_ELEMENT_ARRAY_BUFFER,
+		index_buffers[(GLuint)GEOMETRY_BUFFER_ID::UI_COMPONENT]); // Note, GL_ELEMENT_ARRAY_BUFFER associates
+	// indices to the bound GL_ARRAY_BUFFER
+	gl_has_errors();
+    GLint in_position_loc = glGetAttribLocation(program, "in_position");
+    GLint in_texcoord_loc = glGetAttribLocation(program, "in_texcoord");
+    gl_has_errors();
+    assert(in_texcoord_loc >= 0);
+
+    glEnableVertexAttribArray(in_position_loc);
+    glVertexAttribPointer(in_position_loc, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(TexturedVertex), (void *)0);
+    gl_has_errors();
+
+    glEnableVertexAttribArray(in_texcoord_loc);
+    glVertexAttribPointer(
+        in_texcoord_loc, 2, GL_FLOAT, GL_FALSE, sizeof(TexturedVertex),
+        (void *)sizeof(
+            vec3)); // note the stride to skip the preceeding vertex position
+
+    // Enabling and binding texture to slot 0
+    glActiveTexture(GL_TEXTURE0);
+    gl_has_errors();
+
+    glBindTexture(GL_TEXTURE_2D, gameBackgroundTexture);
+    gl_has_errors();
+
+    // Getting uniform locations for glUniform* calls
+
+	// Get number of indices from index buffer, which has elements uint16_t
+	GLint size = 0;
+	glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+	gl_has_errors();
+
+	GLsizei num_indices = size / sizeof(uint16_t);
+	// GLsizei num_triangles = num_indices / 3;
+
+    Transform transform;
+    int w, h;
+    glfwGetWindowSize(window, &w, &h);
+    transform.translate(vec2(w,h));
+    transform.scale(vec2(6000,-3000));
+    mat3 projection = createCameraMatrix();
+
+	GLint color_uloc = glGetUniformLocation(program, "fcolor");
+	const vec3 color = vec3(1);
+	glUniform3fv(color_uloc, 1, (float *)&color);
+	gl_has_errors();
+	// Setting uniform values to the currently bound program
+	GLuint transform_loc = glGetUniformLocation(program, "transform");
+	glUniformMatrix3fv(transform_loc, 1, GL_FALSE, (float *)&transform.mat);
+	GLuint projection_loc = glGetUniformLocation(program, "projection");
+	glUniformMatrix3fv(projection_loc, 1, GL_FALSE, (float *)&projection);
+	gl_has_errors();
+	// Drawing of num_indices/3 triangles specified in the index buffer
+	glDrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_SHORT, nullptr);
+	gl_has_errors();
+
+}
+
+void RenderSystem::drawFloor() {
+    const GLuint program = effects[(GLuint)EFFECT_ASSET_ID::TEXTURED];
+	glUseProgram(program);
+	gl_has_errors();
+	// Draw the screen texture on the quad geometry
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers[(GLuint)GEOMETRY_BUFFER_ID::FLOOR]);
+	glBindBuffer(
+		GL_ELEMENT_ARRAY_BUFFER,
+		index_buffers[(GLuint)GEOMETRY_BUFFER_ID::FLOOR]); // Note, GL_ELEMENT_ARRAY_BUFFER associates
+	// indices to the bound GL_ARRAY_BUFFER
+	gl_has_errors();
+    GLint in_position_loc = glGetAttribLocation(program, "in_position");
+    GLint in_texcoord_loc = glGetAttribLocation(program, "in_texcoord");
+    gl_has_errors();
+    assert(in_texcoord_loc >= 0);
+
+    glEnableVertexAttribArray(in_position_loc);
+    glVertexAttribPointer(in_position_loc, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(TexturedVertex), (void *)0);
+    gl_has_errors();
+
+    glEnableVertexAttribArray(in_texcoord_loc);
+    glVertexAttribPointer(
+        in_texcoord_loc, 2, GL_FLOAT, GL_FALSE, sizeof(TexturedVertex),
+        (void *)sizeof(
+            vec3)); // note the stride to skip the preceeding vertex position
+
+    // Enabling and binding texture to slot 0
+    glActiveTexture(GL_TEXTURE0);
+    gl_has_errors();
+
+    glBindTexture(GL_TEXTURE_2D, floorTexture);
+    gl_has_errors();
+
+    // Getting uniform locations for glUniform* calls
+
+	// Get number of indices from index buffer, which has elements uint16_t
+	GLint size = 0;
+	glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+	gl_has_errors();
+
+	GLsizei num_indices = size / sizeof(uint16_t);
+	// GLsizei num_triangles = num_indices / 3;
+
+    Transform transform;
+    /* transform.translate(vec2(500,300)); */
+    /* transform.scale(vec2(200,-200)); */
+    mat3 projection = createCameraMatrix();
+
+	GLint color_uloc = glGetUniformLocation(program, "fcolor");
+	const vec3 color = vec3(1);
+	glUniform3fv(color_uloc, 1, (float *)&color);
+	gl_has_errors();
+	// Setting uniform values to the currently bound program
+	GLuint transform_loc = glGetUniformLocation(program, "transform");
+	glUniformMatrix3fv(transform_loc, 1, GL_FALSE, (float *)&transform.mat);
+	GLuint projection_loc = glGetUniformLocation(program, "projection");
+	glUniformMatrix3fv(projection_loc, 1, GL_FALSE, (float *)&projection);
+	gl_has_errors();
+	// Drawing of num_indices/3 triangles specified in the index buffer
+	glDrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_SHORT, nullptr);
+	gl_has_errors();
+
+}
+
+void RenderSystem::drawSpaceship() {
+    const GLuint program = effects[(GLuint)EFFECT_ASSET_ID::TEXTURED];
+	glUseProgram(program);
+	gl_has_errors();
+	// Draw the screen texture on the quad geometry
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers[(GLuint)GEOMETRY_BUFFER_ID::UI_COMPONENT]);
+	glBindBuffer(
+		GL_ELEMENT_ARRAY_BUFFER,
+		index_buffers[(GLuint)GEOMETRY_BUFFER_ID::UI_COMPONENT]); // Note, GL_ELEMENT_ARRAY_BUFFER associates
+	// indices to the bound GL_ARRAY_BUFFER
+	gl_has_errors();
+    GLint in_position_loc = glGetAttribLocation(program, "in_position");
+    GLint in_texcoord_loc = glGetAttribLocation(program, "in_texcoord");
+    gl_has_errors();
+    assert(in_texcoord_loc >= 0);
+
+    glEnableVertexAttribArray(in_position_loc);
+    glVertexAttribPointer(in_position_loc, 3, GL_FLOAT, GL_FALSE,
+                          sizeof(TexturedVertex), (void *)0);
+    gl_has_errors();
+
+    glEnableVertexAttribArray(in_texcoord_loc);
+    glVertexAttribPointer(
+        in_texcoord_loc, 2, GL_FLOAT, GL_FALSE, sizeof(TexturedVertex),
+        (void *)sizeof(
+            vec3)); // note the stride to skip the preceeding vertex position
+
+    // Enabling and binding texture to slot 0
+    glActiveTexture(GL_TEXTURE0);
+    gl_has_errors();
+
+    glBindTexture(GL_TEXTURE_2D, spaceshipTexture);
+    gl_has_errors();
+
+    // Getting uniform locations for glUniform* calls
+
+	// Get number of indices from index buffer, which has elements uint16_t
+	GLint size = 0;
+	glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+	gl_has_errors();
+
+	GLsizei num_indices = size / sizeof(uint16_t);
+	// GLsizei num_triangles = num_indices / 3;
+
+    int w, h;
+    glfwGetWindowSize(window, &w, &h);
+    Transform transform;
+
+    transform.translate(vec2(w,h));
+    transform.scale(vec2(w*3.0f,-h*3.0f));
+    mat3 projection = createCameraMatrix();
+
+	GLint color_uloc = glGetUniformLocation(program, "fcolor");
+	const vec3 color = vec3(1);
+	glUniform3fv(color_uloc, 1, (float *)&color);
+	gl_has_errors();
+	// Setting uniform values to the currently bound program
+	GLuint transform_loc = glGetUniformLocation(program, "transform");
+	glUniformMatrix3fv(transform_loc, 1, GL_FALSE, (float *)&transform.mat);
+	GLuint projection_loc = glGetUniformLocation(program, "projection");
+	glUniformMatrix3fv(projection_loc, 1, GL_FALSE, (float *)&projection);
+	gl_has_errors();
+	// Drawing of num_indices/3 triangles specified in the index buffer
+	glDrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_SHORT, nullptr);
+	gl_has_errors();
+
+}
 void RenderSystem::flipActiveButtions(int activeScreen) {
     for (Entity e : registry.clickables.entities) {
         Clickable& c = registry.clickables.get(e);
@@ -764,5 +979,15 @@ void RenderSystem::flipActiveButtions(int activeScreen) {
             registry.renderRequests.remove(e);
         }
     }
+}
+
+vec2 RenderSystem::calculatePosInCamera(const vec2 &position) {
+    mat3 cameraMatrix = createCameraMatrix();
+    int w, h;
+    glfwGetWindowSize(window, &w, &h);
+    vec3 updatedPosition = cameraMatrix * vec3(position.x, position.y, 1.0f);
+    // Map to [0,1]
+    vec2 standardizedPosition = vec2((updatedPosition.x + 1)/2, (updatedPosition.y + 1)/2);
+    return {w * standardizedPosition.x, h -  h * standardizedPosition.y};
 }
 

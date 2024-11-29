@@ -106,7 +106,18 @@ public:
     bool initWinScreen();
     void drawWinScreen();
 
+    bool initGameBackground();
+    void drawGameBackground();
+
+    bool initFloor();
+    void drawFloor();
+    
+    bool initSpaceship();
+    void drawSpaceship();
+
     bool mouseGestureInit();
+
+    vec2 calculatePosInCamera(const vec2 &position);
 
     int getActiveScreen() const;
     void setActiveScreen(int activeScreen);
@@ -143,6 +154,9 @@ public:
     void drawMouseGestures();
 
     mat3 createProjectionMatrix();
+    mat3 createCameraMatrix();
+
+    GLFWwindow* getWindow() {return window;};
 
 private:
     void updateAnimations(float elapsed_ms);
@@ -179,6 +193,15 @@ private:
 
     GLuint winScreenTexture;
     const std::string winScreenImgPath = textures_path("ui/win-screen.png");
+
+    GLuint gameBackgroundTexture;
+    const std::string gameBackgroundImgPath = textures_path("spaceship-background.png");
+
+    GLuint floorTexture;
+    const std::string floorImgPath = textures_path("floor-tile.png");
+
+    GLuint spaceshipTexture;
+    const std::string spaceshipImgPath = textures_path("spaceship.png");
 
     const float MENU_BUTTON_HEIGHT = 90.f;
     const float MENU_BUTTON_WIDTH = 380.f;
@@ -444,6 +467,10 @@ private:
 
     bool distortColor = false;
     bool LIGHT_SYSTEM_TOGGLE = false;
+
+    vec2 m_roomTileDimensions = {50, 30};
+    vec2 m_roomTileSize = {50, 50};
+
 };
 
 bool loadEffectFromFile(

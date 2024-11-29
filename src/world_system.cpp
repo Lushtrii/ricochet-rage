@@ -255,11 +255,13 @@ vec2 WorldSystem::create_spawn_position()
 bool WorldSystem::step(float elapsed_ms_since_last_update)
 {
     // Show Current Level
-    if (!registry.texts.has(showLevel))
+    int w, h;
+    glfwGetWindowSize(renderer->getWindow(), &w, &h);
+    if (!registry.texts.has(showLevel)) 
     {
-        showLevel = createText(renderer, "Level " + std::to_string(currLevels.current_level + 1), vec2(window_width_px / 2 + 450.0f, 80.0f), 2.0f, {1.0, 0.0, 0.0}, false);
-    }
-    else
+        showLevel = createText(renderer, "Level " + std::to_string(currLevels.current_level + 1), vec2(w/2 + w*0.35f, h * 0.11f), 2.0f, {1.0, 0.0, 0.0}, false);
+    } 
+    else 
     {
         Text &showLevelText = registry.texts.get(showLevel);
         showLevelText.text = "Level " + std::to_string(currLevels.current_level + 1);
@@ -284,12 +286,6 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         std::stringstream title_ss;
         title_ss << "Ricochet Rage | FPS: " << FPS;
         glfwSetWindowTitle(window, title_ss.str().c_str());
-    }
-
-    // check if player should move to next room
-    if (registry.motions.get(player).position.x >= window_width_px - 50)
-    {
-        NextRoom(renderer, (int)(uniform_dist(rng) * INT32_MAX));
     }
 
     // Remove debug info from the last step
@@ -640,19 +636,17 @@ void WorldSystem::projectile_hit_character(Entity laser, Entity character)
         if (is_character_player)
         {
             color = {1.f, 0.f, 0.133f};
-            scale = 1.5f;
-        }
-        else
+            scale = 1.25f;
+        } 
+        else 
         {
             color = {0.f, 1.f, 1.f};
-            scale = 1.f;
+            scale = 0.87f;
         }
-
-        Motion &playerMotion = registry.motions.get(registry.players.entities[0]);
-        int cameraOffsetX = window_width_px / 2 - playerMotion.position.x;
-        int cameraOffsetY = window_height_px / 2 - (window_height_px - playerMotion.position.y);
-        vec2 cameraOffset = vec2(cameraOffsetX, -cameraOffsetY);
-        createText(renderer, "-" + std::to_string(damage), registry.motions.get(character).position + cameraOffset, scale, color);
+        
+        vec2 characterPos = registry.motions.get(character).position;
+        vec2 updatedPosition = renderer->calculatePosInCamera(characterPos);
+        createText(renderer, "-" + std::to_string(damage), updatedPosition, scale, color);
         health_check(health, character);
 
         if (steal_health && !is_character_player)
@@ -1028,11 +1022,11 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
         if (registry.deathTimers.has(player))
             return;
         Motion &motion = registry.motions.get(player);
-        int cameraOffsetX = window_width_px / 2 - motion.position.x;
-        // Motion.position assumes top right is (window_width_px, window_height_px) when the y axis is actually flipped, so negative offset
-        int cameraOffsetY = -(window_height_px / 2 - (window_height_px - motion.position.y));
-        vec2 cameraOffset = vec2(cameraOffsetX, cameraOffsetY);
-        vec2 direction = (motion.position + cameraOffset) - mouse_position;
+        
+        int w, h;
+        glfwGetWindowSize(window, &w, &h);
+        vec2 screenCenter = vec2(w/2, h/2);
+        vec2 direction = screenCenter - mouse_position;
         vec2 direction_normalized = normalize(direction);
         float angle = atan2(direction_normalized.y, direction_normalized.x);
         motion.angle = angle;
@@ -1055,7 +1049,11 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
                         // Heal the player
                         Health &playerHealth = registry.healths.get(player);
                         playerHealth.value = min(playerHealth.value + 50, 100);
-                        createText(renderer, "+ 50", registry.motions.get(player).position, 1.5f, {0.0, 1.0, 0.0});
+                        int w, h;
+                        glfwGetWindowSize(window, &w, &h);
+                        // Motion.position assumes top right is (window_width_px, window_height_px) when the y axis is actually flipped, so negative offset
+                        vec2 textOffset = vec2(0.01*w, -0.01*h);
+                        createText(renderer, "+ 50", vec2(w/2, h/2) + textOffset, 1.25f, {0.0, 1.0, 0.0});
                     }
                 }
                 // Just delete everything from the gesturePath

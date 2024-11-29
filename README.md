@@ -10,6 +10,10 @@ Polygon Triangulation Library: https://github.com/mapbox/earcut.hpp
 
 Shadows implementation inspired by: https://ncase.me/sight-and-light/
 
+Background image: https://wallpapercave.com/pixel-space-wallpapers
+
+Floor texture: https://piiixl.itch.io/textures3
+
 ## M3 Features
 - Different Game Rooms
     - The game consists of three levels with different enemy types and different number of enemies - clear all levels to win the game.

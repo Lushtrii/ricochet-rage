@@ -596,7 +596,7 @@ void GenerateMap(RenderSystem *renderer, int seed)
         seed++;
     }
 
-    vec2 tileSize = vec2(125, 125) * 2.0f;
+    vec2 tileSize = vec2(50, 50);
     for (int x = 0; x < result.width; x++)
     {
         for (int y = 0; y < result.height; y++)
@@ -611,11 +611,7 @@ void GenerateMap(RenderSystem *renderer, int seed)
 
 void createTile(RenderSystem *renderer, vec2 pos, vec2 size, TT type)
 {
-    vec2 fifth_size = vec2(size.x / 5, size.y / 5);
-    pos = pos * fifth_size;
-    createWall(renderer, pos + (fifth_size * 0.5f), fifth_size);
-
-    // std::cout << (pos + (fifth_size * 0.5f)).x << " " << (pos + (fifth_size * 0.5f)).y << std::endl;
+    createWall(renderer, (pos * size.x) + (size * 0.5f), size);
 }
 
 Entity createPlayer(RenderSystem *renderer, vec2 pos)

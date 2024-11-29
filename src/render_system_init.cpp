@@ -3,6 +3,7 @@
 #include "components.hpp"
 #include "render_system.hpp"
 
+#include <GLFW/glfw3.h>
 #include <array>
 #include <fstream>
 
@@ -80,6 +81,9 @@ bool RenderSystem::init(GLFWwindow* window_arg)
     initPauseMenu();
     initDeathScreen();
     initWinScreen();
+    initGameBackground();
+    initFloor();
+    initSpaceship();
 
     if (LIGHT_SYSTEM_TOGGLE) {
         initLight();
@@ -400,6 +404,38 @@ void RenderSystem::initializeGlGeometryBuffers()
 	const std::vector<uint16_t> ui_indices = { 0, 3, 1, 1, 3, 2 };
 	bindVBOandIBO(GEOMETRY_BUFFER_ID::UI_COMPONENT, ui_vertices, ui_indices);
 
+
+	//////////////////////////
+	// Initialize ui component
+	// The position corresponds to the center of the texture.
+    // Defined in world space
+    const int lowerLeftX = 0;
+    const int lowerLeftY = 0;
+    const int FLOOR_TEXTURE_SIZE = 64;
+
+    float roomWidth = m_roomTileSize.x * m_roomTileDimensions.x;
+    float roomHeight = m_roomTileSize.x * m_roomTileDimensions.y;
+
+	std::vector<TexturedVertex> floor_vertices(4);
+    // bot left
+	floor_vertices[0].position = { lowerLeftX, lowerLeftY, 0.f };
+    // bot right
+	floor_vertices[1].position = { roomWidth, lowerLeftY, 0.f };
+    // top left
+	floor_vertices[2].position = { lowerLeftX, roomHeight, 0.f };
+    // top right
+	floor_vertices[3].position = { roomWidth, roomHeight, 0.f };
+
+	floor_vertices[0].texcoord = { 0.f, 0.f };
+	floor_vertices[1].texcoord = { roomWidth/FLOOR_TEXTURE_SIZE, 0.f };
+	floor_vertices[2].texcoord = { 0.f, roomHeight/FLOOR_TEXTURE_SIZE };
+	floor_vertices[3].texcoord = { roomWidth/FLOOR_TEXTURE_SIZE, roomHeight/FLOOR_TEXTURE_SIZE };
+
+
+	// Counterclockwise as it's the default opengl front winding direction.
+	/* const std::vector<uint16_t> ui_indices = { 0, 3, 1, 1, 3, 2 }; */
+	const std::vector<uint16_t> floor_indices = { 0, 1, 2, 1, 3, 2 };
+	bindVBOandIBO(GEOMETRY_BUFFER_ID::FLOOR, floor_vertices, floor_indices);
 	///////////////////////////////////////////////////////
 	// Initialize screen triangle (yes, triangle, not quad; its more efficient).
 	std::vector<vec3> screen_vertices(3);
@@ -769,4 +805,78 @@ bool RenderSystem::initWinScreen() {
     createButton(vec2(window_width_px/2, 610), winScreen, (int)SCREEN_ID::EXIT_SCREEN, (int) TEXTURE_ASSET_ID::EXIT_BUTTON, false);
 	return true;
 
+}
+
+bool RenderSystem::initGameBackground() {
+	glGenTextures(1, &gameBackgroundTexture);
+	
+	stbi_uc* data;
+	stbi_set_flip_vertically_on_load(true);
+	ivec2 dimensions;
+	data = stbi_load(gameBackgroundImgPath.c_str(), &dimensions.x, &dimensions.y, NULL, 4);
+
+	if (data == NULL)
+	{
+		const std::string message = "Could not load the file " + gameBackgroundImgPath + ".";
+		fprintf(stderr, "%s", message.c_str());
+		assert(false);
+	}
+	glBindTexture(GL_TEXTURE_2D, gameBackgroundTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x, dimensions.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	gl_has_errors();
+	stbi_image_free(data);
+
+	return true;
+}
+
+bool RenderSystem::initFloor() {
+	glGenTextures(1, &floorTexture);
+	
+	stbi_uc* data;
+	stbi_set_flip_vertically_on_load(true);
+	ivec2 dimensions;
+	data = stbi_load(floorImgPath.c_str(), &dimensions.x, &dimensions.y, NULL, 4);
+
+	if (data == NULL)
+	{
+		const std::string message = "Could not load the file " + floorImgPath + ".";
+		fprintf(stderr, "%s", message.c_str());
+		assert(false);
+	}
+	glBindTexture(GL_TEXTURE_2D, floorTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x, dimensions.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	gl_has_errors();
+	stbi_image_free(data);
+
+	return true;
+}
+
+bool RenderSystem::initSpaceship() {
+	glGenTextures(1, &spaceshipTexture);
+	
+	stbi_uc* data;
+	stbi_set_flip_vertically_on_load(true);
+	ivec2 dimensions;
+	data = stbi_load(spaceshipImgPath.c_str(), &dimensions.x, &dimensions.y, NULL, 4);
+
+	if (data == NULL)
+	{
+		const std::string message = "Could not load the file " + spaceshipImgPath + ".";
+		fprintf(stderr, "%s", message.c_str());
+		assert(false);
+	}
+	glBindTexture(GL_TEXTURE_2D, spaceshipTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dimensions.x, dimensions.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	gl_has_errors();
+	stbi_image_free(data);
+
+	return true;
 }
