@@ -13,17 +13,19 @@
 
 #include "physics_system.hpp"
 
+#include "distort.hpp"
 
-const size_t TOTAL_NUM_ENEMIES = 20;            // total number of enemies in the game level
-const size_t MAX_NUM_ENEMIES = 10;              // maximum number of enemies on the screen
-const size_t ENEMY_SPAWN_DELAY_MS = 3000;       // time between enemy spawns
-const size_t POWER_UP_SPAWN_DELAY_MS = 12500;   // time between power up spawns
+DistortToggle toggle;
 
+const size_t TOTAL_NUM_ENEMIES = 20;          // total number of enemies in the game level
+const size_t MAX_NUM_ENEMIES = 10;            // maximum number of enemies on the screen
+const size_t ENEMY_SPAWN_DELAY_MS = 3000;     // time between enemy spawns
+const size_t POWER_UP_SPAWN_DELAY_MS = 12500; // time between power up spawns
 
 void WorldSystem::on_window_minimize(int minimized)
 {
     int activeScreen = renderer->getActiveScreen();
-    
+
     if (minimized && activeScreen == (int)SCREEN_ID::GAME_SCREEN)
     {
         m_isPaused = true;
@@ -35,7 +37,7 @@ void WorldSystem::on_window_minimize(int minimized)
 void WorldSystem::on_window_focus(int focused)
 {
     int activeScreen = renderer->getActiveScreen();
-    
+
     if (!focused && activeScreen == (int)SCREEN_ID::GAME_SCREEN)
     {
         m_isPaused = true;
@@ -43,7 +45,6 @@ void WorldSystem::on_window_focus(int focused)
         renderer->flipActiveButtions((int)SCREEN_ID::PAUSE_SCREEN);
     }
 }
-
 
 // create the underwater world
 WorldSystem::WorldSystem()
@@ -140,7 +141,6 @@ GLFWwindow *WorldSystem::create_window()
     glfwSetCursorPosCallback(window, cursor_pos_redirect);
     glfwSetMouseButtonCallback(window, click_callback);
 
-
     auto minimize_callback = [](GLFWwindow *wnd, int minimized)
     { ((WorldSystem *)glfwGetWindowUserPointer(wnd))->on_window_minimize(minimized); };
     glfwSetWindowIconifyCallback(window, minimize_callback);
@@ -148,8 +148,6 @@ GLFWwindow *WorldSystem::create_window()
     auto focus_callback = [](GLFWwindow *wnd, int focused)
     { ((WorldSystem *)glfwGetWindowUserPointer(wnd))->on_window_focus(focused); };
     glfwSetWindowFocusCallback(window, focus_callback);
-
-
 
     //////////////////////////////////////
     // Loading music and sounds with SDL
@@ -257,13 +255,15 @@ vec2 WorldSystem::create_spawn_position()
 bool WorldSystem::step(float elapsed_ms_since_last_update)
 {
     // Show Current Level
-    if (!registry.texts.has(showLevel)) {
-        showLevel = createText(renderer, "Level " + std::to_string(currLevels.current_level + 1), vec2(window_width_px/2 + 450.0f, 80.0f), 2.0f, {1.0, 0.0, 0.0}, false);
-    } else {
+    if (!registry.texts.has(showLevel))
+    {
+        showLevel = createText(renderer, "Level " + std::to_string(currLevels.current_level + 1), vec2(window_width_px / 2 + 450.0f, 80.0f), 2.0f, {1.0, 0.0, 0.0}, false);
+    }
+    else
+    {
         Text &showLevelText = registry.texts.get(showLevel);
         showLevelText.text = "Level " + std::to_string(currLevels.current_level + 1);
     }
-
 
     static int frames = 0;
     static double prevTime = glfwGetTime();
@@ -285,7 +285,13 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         title_ss << "Ricochet Rage | FPS: " << FPS;
         glfwSetWindowTitle(window, title_ss.str().c_str());
     }
-   
+
+    // check if player should move to next room
+    if (registry.motions.get(player).position.x >= window_width_px - 50)
+    {
+        NextRoom(renderer, (int)(uniform_dist(rng) * INT32_MAX));
+    }
+
     // Remove debug info from the last step
     while (registry.debugComponents.entities.size() > 0)
         registry.remove_all_components_of(registry.debugComponents.entities.back());
@@ -293,12 +299,15 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     // Remove all health bars from last step
     while (registry.healthBars.entities.size() > 0)
         registry.remove_all_components_of(registry.healthBars.entities.back());
-    
-    for (Entity entity : registry.texts.entities) {
+
+    for (Entity entity : registry.texts.entities)
+    {
         Text &text = registry.texts.get(entity);
-        if (text.timed) {
+        if (text.timed)
+        {
             text.timer -= elapsed_ms_since_last_update / 1000.f;
-            if (text.timer < 0) {
+            if (text.timer < 0)
+            {
                 registry.remove_all_components_of(entity);
             }
         }
@@ -306,31 +315,45 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
 
     int activePowerUpCount = 0;
 
-    for (Entity entity : registry.powerUps.entities) {
+    for (Entity entity : registry.powerUps.entities)
+    {
         PowerUp &powerUp = registry.powerUps.get(entity);
-        if (powerUp.active) {
+        if (powerUp.active)
+        {
             powerUp.active_timer -= elapsed_ms_since_last_update / 1000.f;
-            if (powerUp.active_timer < 0) {
+            if (powerUp.active_timer < 0)
+            {
                 registry.remove_all_components_of(entity);
-            } else {
-                if (powerUp.type == PowerUpType::INVINCIBILITY) {
+            }
+            else
+            {
+                if (powerUp.type == PowerUpType::INVINCIBILITY)
+                {
                     registry.colors.get(player) = {0.2f, 0.6f, 0.2f};
-                } else if (powerUp.type == PowerUpType::SUPER_BULLETS) {
+                }
+                else if (powerUp.type == PowerUpType::SUPER_BULLETS)
+                {
                     registry.colors.get(player) = {0.2f, 0.2f, 0.6f};
-                } else {
+                }
+                else
+                {
                     registry.colors.get(player) = {0.3f, 0.2f, 0.3f};
                 }
             }
             activePowerUpCount++;
-        } else {
+        }
+        else
+        {
             powerUp.available_timer -= elapsed_ms_since_last_update / 1000.f;
-            if (powerUp.available_timer < 0) {
+            if (powerUp.available_timer < 0)
+            {
                 registry.remove_all_components_of(entity);
             }
         }
     }
 
-    if (activePowerUpCount == 0) {
+    if (activePowerUpCount == 0)
+    {
         registry.colors.get(player) = {1.f, 0.8f, 0.8f};
     }
 
@@ -368,9 +391,12 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
             Health &health = registry.healths.get(entity);
 
             float healthNormalized;
-            if (registry.bosses.has(entity)) {
+            if (registry.bosses.has(entity))
+            {
                 healthNormalized = health.value / 300.f;
-            } else {
+            }
+            else
+            {
                 healthNormalized = health.value / 100.f;
             }
             createHealthBar(
@@ -423,7 +449,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         {
             createRangedEnemy(renderer, spawn_pos);
             curr_level_struct.num_ranged--;
-        } 
+        }
         else if (curr_level_struct.num_boss >= 1)
         {
             createCowboyBossEnemy(renderer, spawn_pos);
@@ -436,7 +462,8 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     {
         printf("NEXT LEVEL");
         currLevels.current_level++;
-        if (currLevels.current_level == currLevels.total_level_index) {
+        if (currLevels.current_level == currLevels.total_level_index)
+        {
             renderer->setActiveScreen((int)SCREEN_ID::WIN_SCREEN);
             renderer->flipActiveButtions(renderer->getActiveScreen());
             reset_level();
@@ -529,47 +556,48 @@ void WorldSystem::restart_game()
     registry.list_all_components();
 
     // create a new player
-    createPlayer(renderer, {window_width_px / 2 - 150, window_height_px / 2});
+    createPlayer(renderer, {30, window_height_px});
     init_values();
     registry.colors.insert(player, {1, 0.8f, 0.8f});
     update_player_move_dir();
 
     createNecromancerEnemy(renderer, {window_width_px / 2 + 210, window_height_px / 2});
+    GenerateMap(renderer, uniform_dist(rng) * INT32_MAX);
 
-    // create the game walls
-    createWall(renderer, vec2(window_width_px / 2.f, window_height_px / 2.f), vec2(100, 100), 0);
-    createWall(renderer, vec2(window_width_px / 2.f + 100, window_height_px / 2.f), vec2(100, 100), 0);
+    // // create the game walls
+    // createWall(renderer, vec2(window_width_px / 2.f, window_height_px / 2.f), vec2(100, 100), 0);
+    // createWall(renderer, vec2(window_width_px / 2.f + 100, window_height_px / 2.f), vec2(100, 100), 0);
 
-    // updated wall
-    // top right corner
-    createWall(renderer, vec2(window_width_px - 50, window_height_px - 675), vec2(50, 50), 0);
+    // // updated wall
+    // // top right corner
+    // createWall(renderer, vec2(window_width_px - 50, window_height_px - 675), vec2(50, 50), 0);
 
-    // top left corner
-    createWall(renderer, vec2(window_width_px - 1200, window_height_px - 675), vec2(50, 50), 0);
+    // // top left corner
+    // createWall(renderer, vec2(window_width_px - 1200, window_height_px - 675), vec2(50, 50), 0);
 
-    // bot right corner
-    createWall(renderer, vec2(window_width_px - 50, window_height_px - 75), vec2(50, 50), 0);
+    // // bot right corner
+    // createWall(renderer, vec2(window_width_px - 50, window_height_px - 75), vec2(50, 50), 0);
 
-    // bot left corner
-    createWall(renderer, vec2(window_width_px - 1200, window_height_px - 75), vec2(50, 50), 0);
+    // // bot left corner
+    // createWall(renderer, vec2(window_width_px - 1200, window_height_px - 75), vec2(50, 50), 0);
 
-    for (int i = 100; i <= 1150; i += 50)
-    {
-        // Top wall
-        createWall(renderer, vec2(window_width_px - i, window_height_px - 675), vec2(50, 50), 0);
+    // for (int i = 100; i <= 1150; i += 50)
+    // {
+    //     // Top wall
+    //     createWall(renderer, vec2(window_width_px - i, window_height_px - 675), vec2(50, 50), 0);
 
-        // Bottom wall
-        createWall(renderer, vec2(window_width_px - i, window_height_px - 75), vec2(50, 50), 0);
-    }
+    //     // Bottom wall
+    //     createWall(renderer, vec2(window_width_px - i, window_height_px - 75), vec2(50, 50), 0);
+    // }
 
-    for (int i = 125; i <= 625; i += 50)
-    {
-        // Left wall
-        createWall(renderer, vec2(window_width_px - 1200, window_height_px - i), vec2(50, 50), 0);
+    // for (int i = 125; i <= 625; i += 50)
+    // {
+    //     // Left wall
+    //     createWall(renderer, vec2(window_width_px - 1200, window_height_px - i), vec2(50, 50), 0);
 
-        // Right wall
-        createWall(renderer, vec2(window_width_px - 50, window_height_px - i), vec2(50, 50), 0);
-    }
+    //     // Right wall
+    //     createWall(renderer, vec2(window_width_px - 50, window_height_px - i), vec2(50, 50), 0);
+    // }
 
     // create power ups
     // createInvincibilityPowerUp(renderer, {window_width_px / 2.f - 100, window_height_px / 2.f - 100});
@@ -601,29 +629,34 @@ void WorldSystem::projectile_hit_character(Entity laser, Entity character)
     }
 
     // Deal damage to enemy always, to player only if invincibility is off
-    if ((causeDamage && is_character_player) || !is_character_player) {
+    if ((causeDamage && is_character_player) || !is_character_player)
+    {
         int damage = health.applyDamage(projectile.bounces_remaining, is_player_projectile, damageMultiplier);
 
         // Show damage effect
         vec3 color;
         float scale;
 
-        if (is_character_player) {
+        if (is_character_player)
+        {
             color = {1.f, 0.f, 0.133f};
             scale = 1.5f;
-        } else {
+        }
+        else
+        {
             color = {0.f, 1.f, 1.f};
             scale = 1.f;
         }
-        
-        Motion& playerMotion = registry.motions.get(registry.players.entities[0]);
-        int cameraOffsetX = window_width_px/2 - playerMotion.position.x;
-        int cameraOffsetY = window_height_px/2 - (window_height_px - playerMotion.position.y);
+
+        Motion &playerMotion = registry.motions.get(registry.players.entities[0]);
+        int cameraOffsetX = window_width_px / 2 - playerMotion.position.x;
+        int cameraOffsetY = window_height_px / 2 - (window_height_px - playerMotion.position.y);
         vec2 cameraOffset = vec2(cameraOffsetX, -cameraOffsetY);
         createText(renderer, "-" + std::to_string(damage), registry.motions.get(character).position + cameraOffset, scale, color);
         health_check(health, character);
 
-        if (steal_health && !is_character_player) {
+        if (steal_health && !is_character_player)
+        {
             Health &playerHealth = registry.healths.get(player);
             playerHealth.addHealth(damage);
         }
@@ -822,8 +855,6 @@ void WorldSystem::update_player_move_dir()
     motion.velocity = length(move_direction) >= 1 ? normalize(move_direction) * p.DEFAULT_SPEED : vec2(0, 0);
 }
 
-
-
 // On key callback
 void WorldSystem::on_key(int key, int, int action, int mod)
 {
@@ -879,7 +910,6 @@ void WorldSystem::on_key(int key, int, int action, int mod)
         }
     }
 
-
     /* Entity mainMenuEntity; */
     // Exiting game on Esc
     if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE && !registry.deathTimers.has(player))
@@ -904,10 +934,11 @@ void WorldSystem::on_key(int key, int, int action, int mod)
             renderer->setActiveScreen((int)SCREEN_ID::GAME_SCREEN);
 
             // button outline no longer stays after unpausing
-            for (Entity e : registry.clickables.entities) {
-                    Clickable& c = registry.clickables.get(e);
-                    c.isCurrentlyHoveredOver = false;
-                }
+            for (Entity e : registry.clickables.entities)
+            {
+                Clickable &c = registry.clickables.get(e);
+                c.isCurrentlyHoveredOver = false;
+            }
             registry.renderRequests.remove(renderer->getHoverEntity());
         }
         renderer->flipActiveButtions(renderer->getActiveScreen());
@@ -928,6 +959,18 @@ void WorldSystem::on_key(int key, int, int action, int mod)
             debugging.in_debug_mode = false;
         else
             debugging.in_debug_mode = true;
+    }
+
+    if (action == GLFW_PRESS)
+    {
+        if (key == GLFW_KEY_2)
+        {
+            toggle = DISTORT_ON;
+        }
+        else if (key == GLFW_KEY_1)
+        {
+            toggle = DISTORT_OFF;
+        }
     }
 
     // Control the current speed with `<` `>`
@@ -985,9 +1028,9 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
         if (registry.deathTimers.has(player))
             return;
         Motion &motion = registry.motions.get(player);
-        int cameraOffsetX = window_width_px/2 - motion.position.x;
+        int cameraOffsetX = window_width_px / 2 - motion.position.x;
         // Motion.position assumes top right is (window_width_px, window_height_px) when the y axis is actually flipped, so negative offset
-        int cameraOffsetY = -(window_height_px/2 - (window_height_px - motion.position.y));
+        int cameraOffsetY = -(window_height_px / 2 - (window_height_px - motion.position.y));
         vec2 cameraOffset = vec2(cameraOffsetX, cameraOffsetY);
         vec2 direction = (motion.position + cameraOffset) - mouse_position;
         vec2 direction_normalized = normalize(direction);
@@ -995,16 +1038,22 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
         motion.angle = angle;
 
         // Deal with mouse gestures
-        if (mouseGestures.isToggled) {
-            if (mouseGestures.isHeld) {
+        if (mouseGestures.isToggled)
+        {
+            if (mouseGestures.isHeld)
+            {
                 mouseGestures.gesturePath.push_back(mouse_position);
                 mouseGestures.renderPath.push_back(vec2(mouse_position.x, window_height_px - mouse_position.y));
                 mouseGestures.lastPosition = mouse_position;
-            } else {
-                if (!mouseGestures.gesturePath.empty()) {
-                    if (detect_heart_shape()) {
+            }
+            else
+            {
+                if (!mouseGestures.gesturePath.empty())
+                {
+                    if (detect_heart_shape())
+                    {
                         // Heal the player
-                        Health& playerHealth = registry.healths.get(player);
+                        Health &playerHealth = registry.healths.get(player);
                         playerHealth.value = min(playerHealth.value + 50, 100);
                         createText(renderer, "+ 50", registry.motions.get(player).position, 1.5f, {0.0, 1.0, 0.0});
                     }
@@ -1104,11 +1153,12 @@ void WorldSystem::on_mouse_click(int button, int action, int mods)
             }
         }
     }
-    
+
     // Mouse Gestures for healing
     bool rightClicked = button == GLFW_MOUSE_BUTTON_RIGHT;
     bool ctrlClicked = button == GLFW_MOUSE_BUTTON_LEFT && (mods & GLFW_MOD_CONTROL);
-    if (mouseGestures.isToggled && (rightClicked || ctrlClicked) && !registry.deathTimers.has(player) && activeScreen == (int) SCREEN_ID::GAME_SCREEN) {
+    if (mouseGestures.isToggled && (rightClicked || ctrlClicked) && !registry.deathTimers.has(player) && activeScreen == (int)SCREEN_ID::GAME_SCREEN)
+    {
         mouseGestures.isHeld = action == GLFW_PRESS;
     }
 }

@@ -4,13 +4,16 @@
 #include "render_system.hpp"
 #include "tiny_ecs_registry.hpp"
 #include "world_system.hpp"
+#include "wfc/tiling_wfc.hpp"
+#include "wfc/array2D.hpp"
 
 #include <cstdio>
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <unordered_set>
 
-void SaveGameToFile(RenderSystem* renderer)
+void SaveGameToFile(RenderSystem *renderer)
 {
     std::ofstream f("../Save1.data");
 
@@ -37,7 +40,8 @@ void SaveGameToFile(RenderSystem* renderer)
             f << motion.velocity.x << "\n"
               << motion.velocity.y << "\n";
         }
-        if (registry.renderRequests.has(e) && !registry.clickables.has(e) && e != renderer->getHoverEntity()) {
+        if (registry.renderRequests.has(e) && !registry.clickables.has(e) && e != renderer->getHoverEntity())
+        {
             RenderRequest &r = registry.renderRequests.get(e);
             f << "render_request" << "\n";
             f << (int)r.used_effect << "\n";
@@ -63,13 +67,6 @@ void SaveGameToFile(RenderSystem* renderer)
             Enemy &enemy = registry.enemies.get(e);
             f << "enemy" << "\n";
             f << (int)enemy.enemyState << "\n";
-        }
-        if (registry.meleeAttacks.has(e)) {
-            MeleeAttack &meleeAttack = registry.meleeAttacks.get(e);
-            f << "meleeAttack" << "\n";
-            f << meleeAttack.damage << "\n";
-            f << meleeAttack.windup << "\n";
-            f << meleeAttack.windupMax << "\n";
         }
         if (registry.healths.has(e))
         {
@@ -159,19 +156,20 @@ void SaveGameToFile(RenderSystem* renderer)
             f << a.is_playing << "\n";
             f << a.loop << "\n";
         }
-        if (registry.bosses.has(e)) 
+        if (registry.bosses.has(e))
         {
             f << "boss" << '\n';
         }
-        if (registry.teleporters.has(e)) 
+        if (registry.teleporters.has(e))
         {
             Teleporter &t = registry.teleporters.get(e);
             f << "teleporter" << "\n";
             f << t.animation_time << "\n";
             f << t.max_teleport_time << "\n";
-            f << t.prevScale.x << "\n" << t.prevScale.y << "\n";
+            f << t.prevScale.x << "\n"
+              << t.prevScale.y << "\n";
         }
-        if (registry.teleporting.has(e)) 
+        if (registry.teleporting.has(e))
         {
             Teleporting &t = registry.teleporting.get(e);
             f << "teleporting" << "\n";
@@ -201,10 +199,11 @@ int LoadInt(std::ifstream &f)
     return std::stoi(line);
 }
 
-unsigned int LoadUnsignedInt(std::ifstream &f) {
+unsigned int LoadUnsignedInt(std::ifstream &f)
+{
     std::string line;
     getline(f, line);
-    return (unsigned int) std::stoi(line);
+    return (unsigned int)std::stoi(line);
 }
 
 float LoadFloat(std::ifstream &f)
@@ -225,13 +224,14 @@ PowerUpType LoadPowerUpType(std::ifstream &f)
 {
     std::string line;
     getline(f, line);
-    return (PowerUpType) std::stoi(line);
+    return (PowerUpType)std::stoi(line);
 }
 
 bool LoadGameFromFile(RenderSystem *renderer)
 {
     bool saveFileExists = renderer->doesSaveFileExist();
-    if (!saveFileExists) {
+    if (!saveFileExists)
+    {
         return false;
     }
     std::ifstream f("../Save1.data");
@@ -284,13 +284,6 @@ bool LoadGameFromFile(RenderSystem *renderer)
             Enemy &enemy = registry.enemies.emplace(e);
             enemy.enemyState = static_cast<EnemyState>(LoadInt(f));
         }
-        else if (line == "meleeAttack") 
-        {
-            MeleeAttack &m = registry.meleeAttacks.emplace(e);
-            m.damage = LoadInt(f);
-            m.windup = LoadFloat(f);
-            m.windupMax = LoadFloat(f);
-        }
         else if (line == "health")
         {
             Health &h = registry.healths.emplace(e);
@@ -329,7 +322,7 @@ bool LoadGameFromFile(RenderSystem *renderer)
         {
             LineOfSight &l = registry.lightOfSight.emplace(e);
             l.ray_distance = LoadFloat(f);
-            l.ray_width = LoadFloat(f );
+            l.ray_width = LoadFloat(f);
         }
         else if (line == "projectile")
         {
@@ -380,7 +373,7 @@ bool LoadGameFromFile(RenderSystem *renderer)
             t.max_teleport_time = LoadFloat(f);
             t.prevScale = vec2(LoadFloat(f), LoadFloat(f));
         }
-        else if (line == "teleporting") 
+        else if (line == "teleporting")
         {
             Teleporting &t = registry.teleporting.emplace(e);
             t.starting_time = LoadFloat(f);
@@ -401,6 +394,228 @@ bool LoadGameFromFile(RenderSystem *renderer)
     }
 
     return true;
+}
+
+void NextRoom(RenderSystem *renderer, int seed)
+{
+    for (int i = (int)registry.motions.size() - 1; i >= 0; i--)
+    {
+        Entity e = registry.motions.entities[i];
+        if (registry.players.has(e))
+        {
+            Motion &m = registry.motions.get(e);
+            m.position = vec2(30, window_height_px / 2);
+        }
+        else if (!registry.clickables.has(e) && e != renderer->getHoverEntity())
+        {
+            registry.remove_all_components_of(e);
+        }
+    }
+
+    GenerateMap(renderer, seed);
+}
+
+void GenerateMap(RenderSystem *renderer, int seed)
+{
+
+    std::vector<Tile<int>> tiles;
+    std::vector<std::tuple<unsigned, unsigned, unsigned, unsigned>> neighbors_ids;
+    std::vector<int> bend({0, 0, 0, 1, 1,
+                           0, 0, 0, 1, 1,
+                           0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0});
+    std::vector<int> corner({1, 1, 0, 0, 0,
+                             1, 1, 0, 0, 0,
+                             1, 1, 0, 0, 0,
+                             1, 1, 1, 1, 1,
+                             1, 1, 1, 1, 1});
+    std::vector<int> corridor({1, 0, 0, 0, 1,
+                               1, 0, 0, 0, 1,
+                               1, 0, 0, 0, 1,
+                               1, 0, 0, 0, 1,
+                               1, 0, 0, 0, 1});
+    std::vector<int> door({0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0,
+                           1, 0, 0, 0, 1,
+                           1, 0, 0, 0, 1});
+    std::vector<int> empty({0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0});
+    std::vector<int> side({1, 1, 1, 1, 1,
+                           0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0,
+                           0, 0, 0, 0, 0});
+    std::vector<int> t({1, 1, 1, 1, 1,
+                        0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0,
+                        1, 0, 0, 0, 1});
+    std::vector<int> turn({1, 0, 0, 0, 1,
+                           1, 0, 0, 0, 0,
+                           1, 0, 0, 0, 0,
+                           1, 0, 0, 0, 0,
+                           1, 1, 1, 1, 1});
+    std::vector<int> wall({1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1,
+                           1, 1, 1, 1, 1});
+    // std::vector<int> way4({1, 0, 0, 0, 1,
+    //                        0, 0, 0, 0, 0,
+    //                        0, 0, 0, 0, 0,
+    //                        0, 0, 0, 0, 0,
+    //                        1, 0, 0, 0, 1});
+
+    tiles.emplace_back(Array2D<int>(5, 5, bend), Symmetry::L, 0.5);
+    tiles.emplace_back(Array2D<int>(5, 5, corner), Symmetry::L, 0.25);
+    tiles.emplace_back(Array2D<int>(5, 5, corridor), Symmetry::I, 1.0);
+    tiles.emplace_back(Array2D<int>(5, 5, door), Symmetry::T, 3.5);
+    tiles.emplace_back(Array2D<int>(5, 5, empty), Symmetry::X, 0.10);
+    tiles.emplace_back(Array2D<int>(5, 5, side), Symmetry::T, 1.0);
+    tiles.emplace_back(Array2D<int>(5, 5, t), Symmetry::T, 3.5);
+    tiles.emplace_back(Array2D<int>(5, 5, turn), Symmetry::L, 0.5);
+    tiles.emplace_back(Array2D<int>(5, 5, wall), Symmetry::X, 0.05);
+    // tiles.emplace_back(Array2D<int>(5, 5, way4), Symmetry::X, 1.0);
+
+    // neighbors_ids.emplace_back(, 0, , 0);
+    neighbors_ids.emplace_back(CORNER, 1, CORNER, 0);
+    neighbors_ids.emplace_back(CORNER, 2, CORNER, 0);
+    neighbors_ids.emplace_back(CORNER, 0, DOOR, 0);
+    neighbors_ids.emplace_back(CORNER, 0, SIDE, 2);
+    neighbors_ids.emplace_back(CORNER, 1, SIDE, 1);
+    neighbors_ids.emplace_back(CORNER, 1, T, 1);
+    neighbors_ids.emplace_back(CORNER, 1, TURN, 0);
+    neighbors_ids.emplace_back(CORNER, 2, TURN, 0);
+    neighbors_ids.emplace_back(WALL, 0, CORNER, 0);
+    neighbors_ids.emplace_back(CORRIDOR, 1, CORRIDOR, 1);
+    neighbors_ids.emplace_back(CORRIDOR, 1, DOOR, 3);
+    neighbors_ids.emplace_back(CORRIDOR, 0, SIDE, 1);
+    neighbors_ids.emplace_back(CORRIDOR, 1, T, 0);
+    neighbors_ids.emplace_back(CORRIDOR, 1, T, 3);
+    neighbors_ids.emplace_back(CORRIDOR, 1, TURN, 1);
+    neighbors_ids.emplace_back(CORRIDOR, 0, WALL, 0);
+    neighbors_ids.emplace_back(DOOR, 1, DOOR, 3);
+    neighbors_ids.emplace_back(DOOR, 3, EMPTY, 0);
+    neighbors_ids.emplace_back(DOOR, 0, SIDE, 2);
+    neighbors_ids.emplace_back(DOOR, 1, T, 0);
+    neighbors_ids.emplace_back(DOOR, 1, T, 3);
+    neighbors_ids.emplace_back(DOOR, 1, TURN, 1);
+    neighbors_ids.emplace_back(EMPTY, 0, EMPTY, 0);
+    neighbors_ids.emplace_back(EMPTY, 0, SIDE, 3);
+    neighbors_ids.emplace_back(SIDE, 0, SIDE, 0);
+    neighbors_ids.emplace_back(SIDE, 3, SIDE, 1);
+    neighbors_ids.emplace_back(SIDE, 3, T, 1);
+    neighbors_ids.emplace_back(SIDE, 3, TURN, 0);
+    neighbors_ids.emplace_back(SIDE, 3, WALL, 0);
+    neighbors_ids.emplace_back(T, 0, T, 2);
+    neighbors_ids.emplace_back(T, 0, TURN, 1);
+    neighbors_ids.emplace_back(T, 3, WALL, 0);
+    neighbors_ids.emplace_back(TURN, 0, TURN, 2);
+    neighbors_ids.emplace_back(TURN, 1, WALL, 0);
+    neighbors_ids.emplace_back(WALL, 0, WALL, 0);
+    neighbors_ids.emplace_back(BEND, 0, BEND, 1);
+    neighbors_ids.emplace_back(CORNER, 0, BEND, 2);
+    neighbors_ids.emplace_back(DOOR, 0, BEND, 2);
+    neighbors_ids.emplace_back(EMPTY, 0, BEND, 0);
+    neighbors_ids.emplace_back(SIDE, 0, BEND, 1);
+
+    // neighbors_ids.emplace_back(WAY4, 0, WAY4, 0);
+    // neighbors_ids.emplace_back(WAY4, 0, CORRIDOR, 1);
+    // neighbors_ids.emplace_back(WAY4, 0, DOOR, 3);
+    // neighbors_ids.emplace_back(WAY4, 0, T, 0);
+    // neighbors_ids.emplace_back(WAY4, 0, T, 3);
+    // neighbors_ids.emplace_back(WAY4, 0, SIDE, 3);
+    // neighbors_ids.emplace_back(WAY4, 0, TURN, 1);
+
+    int height = 6;
+    int width = 10;
+    int tileLength = 5;
+    bool periodic_output = true;
+
+    Array2D<int> result(1, 1);
+    bool success = false;
+    while (!success)
+    {
+        success = false;
+        try
+        {
+            TilingWFC<int> wfc = TilingWFC<int>(tiles, neighbors_ids, height, width, {periodic_output}, seed);
+
+            wfc.set_tile(EMPTY, 0, height / 2, 0);
+            wfc.set_tile(EMPTY, 0, height / 2, width - 1);
+
+            result = wfc.run();
+
+            // check if a valid path from start to end exists (can the level be completed?)
+            std::pair<int, int> start = {result.height / 2, 0};
+            std::pair<int, int> end = {result.height / 2, result.width - 1};
+            std::unordered_set<std::pair<int, int>, pair_hash> visited;
+            std::vector<std::pair<int, int>> Q;
+            Q.push_back(start);
+            while (Q.size() > 0)
+            {
+                std::pair<int, int> current = Q.back();
+                Q.pop_back();
+                if (current == end)
+                {
+                    success = true;
+                    break;
+                }
+
+                visited.insert(current);
+
+                int y = current.first;
+                int x = current.second;
+
+                if (x > 0 && result.get(y, x - 1) == 0 && visited.count({y, x - 1}) == 0)
+                {
+                    Q.push_back({y, x - 1});
+                }
+                if (x < result.width - 1 && result.get(y, x + 1) == 0 && visited.count({y, x + 1}) == 0)
+                {
+                    Q.push_back({y, x + 1});
+                }
+                if (y > 0 && result.get(y - 1, x) == 0 && visited.count({y - 1, x}) == 0)
+                {
+                    Q.push_back({y - 1, x});
+                }
+                if (y < result.height - 1 && result.get(y + 1, x) == 0 && visited.count({y + 1, x}) == 0)
+                {
+                    Q.push_back({y + 1, x});
+                }
+            }
+        }
+        catch (...)
+        {
+        }
+        seed++;
+    }
+
+    vec2 tileSize = vec2(125, 125) * 2.0f;
+    for (int x = 0; x < result.width; x++)
+    {
+        for (int y = 0; y < result.height; y++)
+        {
+            int value = result.get(y, x);
+
+            if (value == 1)
+                createTile(renderer, vec2(x, y), tileSize, (TT)value);
+        }
+    }
+}
+
+void createTile(RenderSystem *renderer, vec2 pos, vec2 size, TT type)
+{
+    vec2 fifth_size = vec2(size.x / 5, size.y / 5);
+    pos = pos * fifth_size;
+    createWall(renderer, pos + (fifth_size * 0.5f), fifth_size);
+
+    // std::cout << (pos + (fifth_size * 0.5f)).x << " " << (pos + (fifth_size * 0.5f)).y << std::endl;
 }
 
 Entity createPlayer(RenderSystem *renderer, vec2 pos)
@@ -427,7 +642,7 @@ Entity createPlayer(RenderSystem *renderer, vec2 pos)
     registry.players.emplace(entity);
     registry.dashes.emplace(entity);
     registry.damageEffect.emplace(entity);
-    
+
     Animation &animation = registry.animations.emplace(entity);
     animation.sprite_height = 32;
     animation.sprite_width = 32;
@@ -528,7 +743,8 @@ Entity createRangedEnemy(RenderSystem *renderer, vec2 position)
 }
 
 // Create Boss Enemy
-Entity createCowboyBossEnemy(RenderSystem *renderer, vec2 position) {
+Entity createCowboyBossEnemy(RenderSystem *renderer, vec2 position)
+{
     auto entity = Entity();
 
     // Store a reference to the potentially re-used mesh object (the value is stored in the resource cache)
@@ -536,7 +752,7 @@ Entity createCowboyBossEnemy(RenderSystem *renderer, vec2 position) {
     registry.meshPtrs.emplace(entity, &mesh);
 
     // Setting enemy health
-    Health& bossHealth = registry.healths.emplace(entity);
+    Health &bossHealth = registry.healths.emplace(entity);
     bossHealth.value = 300;
 
     // Initialize the motion
@@ -553,60 +769,7 @@ Entity createCowboyBossEnemy(RenderSystem *renderer, vec2 position) {
     registry.enemies.emplace(entity);
 
     // Make more rapid attacks but more time in between
-    ReloadTime& bossReload = registry.reloadTimes.emplace(entity);
-
-    // Also a melee enemy
-    registry.meleeAttacks.emplace(entity);
-    registry.teleporters.emplace(entity);
-
-    registry.bosses.emplace(entity);
-
-    Animation &animation = registry.animations.emplace(entity);
-    animation.sprite_height = 32;
-    animation.sprite_width = 32;
-    animation.num_frames = 5;
-
-    // Add raycasting to the enemy
-    LineOfSight &raycast = registry.lightOfSight.emplace(entity);
-    raycast.ray_distance = 1000;
-    raycast.ray_width = ENEMY_BB_WIDTH;
-
-    registry.renderRequests.insert(
-        entity,
-        {TEXTURE_ASSET_ID::BOSS_ENEMY,
-         EFFECT_ASSET_ID::TEXTURED,
-         GEOMETRY_BUFFER_ID::SPRITE});
-
-    return entity;
-}
-
-// Create Necromancer Enemy
-Entity createNecromancerEnemy(RenderSystem *renderer, vec2 position) {
-    auto entity = Entity();
-
-    // Store a reference to the potentially re-used mesh object (the value is stored in the resource cache)
-    Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
-    registry.meshPtrs.emplace(entity, &mesh);
-
-    // Setting enemy health
-    Health& bossHealth = registry.healths.emplace(entity);
-    bossHealth.value = 300;
-
-    // Initialize the motion
-    auto &motion = registry.motions.emplace(entity);
-    motion.angle = 0.f;
-    motion.velocity = {0.f, 0.f};
-    motion.position = position;
-
-    float multiplier = 0.75f;
-    // Setting initial values, scale is negative to make it face the opposite way
-    motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, multiplier * ENEMY_BB_HEIGHT});
-
-    // create an empty enemies component
-    registry.enemies.emplace(entity);
-
-    // Make more rapid attacks but more time in between
-    ReloadTime& bossReload = registry.reloadTimes.emplace(entity);
+    ReloadTime &bossReload = registry.reloadTimes.emplace(entity);
 
     // Also a melee enemy
     registry.meleeAttacks.emplace(entity);
@@ -721,6 +884,61 @@ Entity createRangedMinion(RenderSystem *renderer, vec2 position)
     return entity;
 }
 
+// Create Necromancer Enemy
+Entity createNecromancerEnemy(RenderSystem *renderer, vec2 position)
+{
+    auto entity = Entity();
+
+    // Store a reference to the potentially re-used mesh object (the value is stored in the resource cache)
+    Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
+    registry.meshPtrs.emplace(entity, &mesh);
+
+    // Setting enemy health
+    Health &bossHealth = registry.healths.emplace(entity);
+    bossHealth.value = 300;
+
+    // Initialize the motion
+    auto &motion = registry.motions.emplace(entity);
+    motion.angle = 0.f;
+    motion.velocity = {0.f, 0.f};
+    motion.position = position;
+
+    float multiplier = 0.75f;
+    // Setting initial values, scale is negative to make it face the opposite way
+    motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, multiplier * ENEMY_BB_HEIGHT});
+
+    // create an empty enemies component
+    registry.enemies.emplace(entity);
+
+    // Make more rapid attacks but more time in between
+    ReloadTime &bossReload = registry.reloadTimes.emplace(entity);
+
+    // Also a melee enemy
+    registry.meleeAttacks.emplace(entity);
+    registry.teleporters.emplace(entity);
+
+    registry.bosses.emplace(entity);
+    registry.necromancers.emplace(entity);
+
+    Animation &animation = registry.animations.emplace(entity);
+    animation.sprite_height = 32;
+    animation.sprite_width = 32;
+    animation.num_frames = 5;
+
+    // Add raycasting to the enemy
+    LineOfSight &raycast = registry.lightOfSight.emplace(entity);
+    raycast.ray_distance = 1000;
+    raycast.ray_width = ENEMY_BB_WIDTH;
+
+    registry.renderRequests.insert(
+        entity,
+        {TEXTURE_ASSET_ID::NECROMANCER_ENEMY,
+         EFFECT_ASSET_ID::TEXTURED,
+         GEOMETRY_BUFFER_ID::SPRITE});
+
+    return entity;
+}
+
 // create our wall entity
 Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle)
 {
@@ -798,7 +1016,7 @@ Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position)
     motion.position = position;
     motion.scale = vec2(POWERUP_BB_WIDTH, POWERUP_BB_HEIGHT) * scaleMultiplier;
 
-    PowerUp& powerUp = registry.powerUps.emplace(entity);
+    PowerUp &powerUp = registry.powerUps.emplace(entity);
     powerUp.type = PowerUpType::INVINCIBILITY;
 
     Animation &animation = registry.animations.emplace(entity);
@@ -825,7 +1043,7 @@ Entity createSuperBulletsPowerUp(RenderSystem *renderer, vec2 position)
     motion.position = position;
     motion.scale = vec2(POWERUP_BB_WIDTH, POWERUP_BB_HEIGHT) * scaleMultiplier;
 
-    PowerUp& powerUp = registry.powerUps.emplace(entity);
+    PowerUp &powerUp = registry.powerUps.emplace(entity);
     powerUp.type = PowerUpType::SUPER_BULLETS;
 
     Animation &animation = registry.animations.emplace(entity);
@@ -852,7 +1070,7 @@ Entity createHealthStealerPowerUp(RenderSystem *renderer, vec2 position)
     motion.position = position;
     motion.scale = vec2(POWERUP_BB_WIDTH, POWERUP_BB_HEIGHT) * scaleMultiplier;
 
-    PowerUp& powerUp = registry.powerUps.emplace(entity);
+    PowerUp &powerUp = registry.powerUps.emplace(entity);
     powerUp.type = PowerUpType::HEALTH_STEALER;
 
     Animation &animation = registry.animations.emplace(entity);
@@ -874,13 +1092,11 @@ Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 scale)
     registry.meshPtrs.emplace(entity, &mesh);
 
     registry.renderRequests.insert(
-        entity, {
-            TEXTURE_ASSET_ID::HEALTH_BAR,
-            EFFECT_ASSET_ID::TEXTURED,
-            GEOMETRY_BUFFER_ID::SPRITE
-        });
+        entity, {TEXTURE_ASSET_ID::HEALTH_BAR,
+                 EFFECT_ASSET_ID::TEXTURED,
+                 GEOMETRY_BUFFER_ID::SPRITE});
 
-    Motion& motion = registry.motions.emplace(entity);
+    Motion &motion = registry.motions.emplace(entity);
     motion.position = position;
     motion.scale = scale;
 
@@ -892,7 +1108,7 @@ Entity createText(RenderSystem *renderer, std::string text, vec2 position, float
 {
     Entity entity = Entity();
 
-    Text& screenText = registry.texts.emplace(entity);
+    Text &screenText = registry.texts.emplace(entity);
     screenText.text = text;
     screenText.position = position;
     screenText.scale = scale;
@@ -901,12 +1117,11 @@ Entity createText(RenderSystem *renderer, std::string text, vec2 position, float
     return entity;
 }
 
-
 Entity createText(RenderSystem *renderer, std::string text, vec2 position, float scale, vec3 color, bool timed)
 {
     Entity entity = Entity();
 
-    Text& screenText = registry.texts.emplace(entity);
+    Text &screenText = registry.texts.emplace(entity);
     screenText.text = text;
     screenText.position = position;
     screenText.scale = scale;
