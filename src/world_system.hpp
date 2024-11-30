@@ -39,14 +39,12 @@ public:
 
     // Should the game be over ?
     bool is_over() const;
-    
-    bool isPaused() const {return m_isPaused;};
 
+    bool isPaused() const { return m_isPaused; };
 
     void on_window_minimize(int minimized);
-    
-    void on_window_focus(int focused);
 
+    void on_window_focus(int focused);
 
 private:
     void update_player_move_dir();
@@ -96,10 +94,19 @@ private:
     Mix_Chunk *super_bullets_sound;
     Mix_Chunk *health_stealer_sound;
 
-    LevelStruct level_one = {1, 80, 0, 0, 2000};
-    LevelStruct level_two = {2, 0, 40, 0, 5000};
-    LevelStruct level_three = {3, 0, 0, 10, 10000};
-    LevelStruct* levels[3] = {&level_one, &level_two, &level_three};
+    // level num, num of melee, num of ranged, num of boss, ms between spawns
+    LevelStruct level_1 = {1, 5, 0, 0, 500};
+    LevelStruct level_2 = {2, 0, 5, 0, 450};
+    LevelStruct level_3 = {3, 10, 10, 0, 450};
+    LevelStruct level_4 = {4, 15, 15, 0, 400};
+    LevelStruct level_5 = {5, 15, 15, 1, 400};
+    LevelStruct level_6 = {6, 20, 20, 0, 400};
+    LevelStruct level_7 = {7, 25, 25, 0, 350};
+    LevelStruct level_8 = {8, 30, 30, 0, 350};
+    LevelStruct level_9 = {9, 40, 40, 0, 300};
+    LevelStruct level_10 = {10, 50, 50, 0, 250};
+    LevelStruct *levels[10] = {&level_1, &level_2, &level_3, &level_4, &level_5,
+                               &level_6, &level_7, &level_8, &level_9, &level_10};
 
     // Show Level
     Entity showLevel;

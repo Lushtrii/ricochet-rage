@@ -46,10 +46,10 @@ struct Health
             damage = 25;
         else
             damage = 10;
-        
+
         if (!is_player_projectile)
             damage = 10;
-        
+
         damage *= damageMultiplier;
         value = max(0, value - damage);
         return damage;
@@ -151,7 +151,8 @@ struct Dash
     vec2 dash_direction = vec2(0, 1);
 };
 
-struct Clickable {
+struct Clickable
+{
     int screenTiedTo;
     int screenGoTo;
     bool isCurrentlyHoveredOver = false;
@@ -222,46 +223,51 @@ struct TexturedVertex
 // Mesh datastructure for storing vertex and index buffers
 struct Mesh
 {
-    static bool loadFromOBJFile(std::string obj_path, std::vector<TexturedVertex> &out_vertices, std::vector<uint16_t> &out_vertex_indices, std::vector<uint16_t>& out_uv_indices, vec2 &out_size);
+    static bool loadFromOBJFile(std::string obj_path, std::vector<TexturedVertex> &out_vertices, std::vector<uint16_t> &out_vertex_indices, std::vector<uint16_t> &out_uv_indices, vec2 &out_size);
     vec2 original_size = {1, 1};
     std::vector<TexturedVertex> vertices;
     std::vector<uint16_t> vertex_indices;
     std::vector<uint16_t> uv_indices;
 };
 
-struct Animation {
+struct Animation
+{
     float current_time = 0.f;
     float frame_time = 0.2f;
     int current_frame = 0;
     int num_frames;
     int sprite_width;
-    int sprite_height; 
+    int sprite_height;
     bool is_playing = true;
     bool loop = true;
 };
 
-struct Ray {
+struct Ray
+{
     vec2 pos;
     vec2 direction;
 };
 
 // In parametric form: p + t * direction
-struct LineSegment {
-    vec2 pos; 
+struct LineSegment
+{
+    vec2 pos;
     vec2 direction;
     int t;
 };
 
 // font character structure
-struct Character {
-	unsigned int TextureID;  // ID handle of the glyph texture
-	glm::ivec2   Size;       // Size of glyph
-	glm::ivec2   Bearing;    // Offset from baseline to left/top of glyph
-	unsigned int Advance;    // Offset to advance to next glyph
-	char character;
+struct Character
+{
+    unsigned int TextureID; // ID handle of the glyph texture
+    glm::ivec2 Size;        // Size of glyph
+    glm::ivec2 Bearing;     // Offset from baseline to left/top of glyph
+    unsigned int Advance;   // Offset to advance to next glyph
+    char character;
 };
 
-struct Text {
+struct Text
+{
     std::string text;
     vec2 position;
     glm::vec3 color;
@@ -270,7 +276,8 @@ struct Text {
     bool timed = true;
 };
 
-struct TextRenderRequest {
+struct TextRenderRequest
+{
     std::string text;
     float x;
     float y;
@@ -282,11 +289,13 @@ struct TextRenderRequest {
         : text(t), x(px), y(py), scale(s), color(c), transform(trans) {}
 };
 
-struct Light {
+struct Light
+{
     glm::vec2 position;
 };
 // Mouse Gestures
-struct MouseGestures {
+struct MouseGestures
+{
     bool isHeld = false;
     vec2 position;
     vec2 lastPosition;
@@ -300,18 +309,20 @@ struct MouseGestures {
 extern MouseGestures mouseGestures;
 
 // Levels
-struct LevelStruct {
+struct LevelStruct
+{
     int level_num = 1;
-    int num_melee = 10;
-    int num_ranged = 10;
-    int num_boss = 1;
+    int num_melee = 0;
+    int num_ranged = 0;
+    int num_boss = 0;
     int enemy_spawn_time = 3000;
 };
 
-struct CurrLevels {
-    int current_level = 1;
-    int total_level_index = 3;
-    LevelStruct* currStruct;
+struct CurrLevels
+{
+    int current_level = 0;
+    int total_level_index = 10;
+    LevelStruct *currStruct = NULL;
 };
 extern CurrLevels currLevels;
 
@@ -384,7 +395,7 @@ enum class GEOMETRY_BUFFER_ID
     PROJECTILE = UI_COMPONENT + 1,
     VISIBILITY_POLYGON = PROJECTILE + 1,
     SHADOW_PLANE = VISIBILITY_POLYGON + 1,
-    FLOOR = SHADOW_PLANE + 1, 
+    FLOOR = SHADOW_PLANE + 1,
     GEOMETRY_COUNT = FLOOR + 1
 };
 

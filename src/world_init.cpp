@@ -561,11 +561,6 @@ void GenerateMap(RenderSystem *renderer, int seed)
             {
                 std::pair<int, int> current = Q.back();
                 Q.pop_back();
-                if (current == end)
-                {
-                    success = true;
-                    break;
-                }
 
                 visited.insert(current);
 
@@ -589,6 +584,19 @@ void GenerateMap(RenderSystem *renderer, int seed)
                     Q.push_back({y + 1, x});
                 }
             }
+
+            int path_count = 0;
+            for (int x = 0; x < result.width; x++)
+            {
+                for (int y = 0; y < result.height; y++)
+                {
+                    path_count += result.get(y, x) == 0 ? 1 : 0;
+                }
+            }
+
+            // std::cout << "COUNT: " << visited.size() << " " << path_count << std::endl;
+
+            success = (path_count == visited.size());
         }
         catch (...)
         {

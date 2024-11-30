@@ -17,9 +17,9 @@
 
 DistortToggle toggle;
 
-const size_t TOTAL_NUM_ENEMIES = 20;          // total number of enemies in the game level
-const size_t MAX_NUM_ENEMIES = 10;            // maximum number of enemies on the screen
-const size_t ENEMY_SPAWN_DELAY_MS = 3000;     // time between enemy spawns
+// const size_t TOTAL_NUM_ENEMIES = 20;          // total number of enemies in the game level
+// const size_t MAX_NUM_ENEMIES = 10;            // maximum number of enemies on the screen
+// const size_t ENEMY_SPAWN_DELAY_MS = 3000;     // time between enemy spawns
 const size_t POWER_UP_SPAWN_DELAY_MS = 12500; // time between power up spawns
 
 void WorldSystem::on_window_minimize(int minimized)
@@ -204,6 +204,7 @@ void WorldSystem::init(RenderSystem *renderer_arg)
     }
     else
     {
+        currLevels.currStruct = levels[currLevels.current_level];
         restart_game();
     }
 }
@@ -257,11 +258,11 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     // Show Current Level
     int w, h;
     glfwGetWindowSize(renderer->getWindow(), &w, &h);
-    if (!registry.texts.has(showLevel)) 
+    if (!registry.texts.has(showLevel))
     {
-        showLevel = createText(renderer, "Level " + std::to_string(currLevels.current_level + 1), vec2(w/2 + w*0.35f, h * 0.11f), 2.0f, {1.0, 0.0, 0.0}, false);
-    } 
-    else 
+        showLevel = createText(renderer, "Level " + std::to_string(currLevels.current_level + 1), vec2(w / 2 + w * 0.35f, h * 0.11f), 2.0f, {1.0, 0.0, 0.0}, false);
+    }
+    else
     {
         Text &showLevelText = registry.texts.get(showLevel);
         showLevelText.text = "Level " + std::to_string(currLevels.current_level + 1);
@@ -431,25 +432,50 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     bool enemiesLeft = (curr_level_struct.num_melee + curr_level_struct.num_ranged + curr_level_struct.num_boss) > 0;
     if (enemiesLeft && next_enemy_spawn < 0.f)
     {
-        next_enemy_spawn = (curr_level_struct.enemy_spawn_time / 2) + uniform_dist(rng) * (curr_level_struct.enemy_spawn_time / 2);
+        next_enemy_spawn = (curr_level_struct.enemy_spawn_time * 0.5) + uniform_dist(rng) * curr_level_struct.enemy_spawn_time;
         vec2 spawn_pos = create_spawn_position();
+        std::cout << "NUM: " << curr_level_struct.num_melee << " "
+                  << curr_level_struct.num_ranged << " "
+                  << curr_level_struct.num_boss << " "
+                  << std::endl;
 
-        // Deprecated for now
-        // bool spawn_melee = uniform_dist(rng) < 0.5;
-        if (curr_level_struct.num_melee >= 1)
+        float rand;
+        if (curr_level_struct.num_melee >= 1 && curr_level_struct.num_ranged >= 1)
+        {
+            rand = uniform_dist(rng) * 2.0f;
+            // std::cout << rand << " RAND" << std::endl;
+        }
+        else if (curr_level_struct.num_melee >= 1)
+        {
+            rand = 1;
+        }
+        else if (curr_level_struct.num_ranged >= 1)
+        {
+            rand = 2;
+        }
+
+        if (curr_level_struct.num_boss >= 1)
+        {
+            if (curr_level_struct.level_num == 5)
+            {
+                createCowboyBossEnemy(renderer, spawn_pos);
+            }
+            else
+            {
+                createNecromancerEnemy(renderer, spawn_pos);
+            }
+
+            curr_level_struct.num_boss--;
+        }
+        else if (rand <= 1)
         {
             createMeleeEnemy(renderer, spawn_pos);
             curr_level_struct.num_melee--;
         }
-        else if (curr_level_struct.num_ranged >= 1)
+        else if (rand <= 2)
         {
             createRangedEnemy(renderer, spawn_pos);
             curr_level_struct.num_ranged--;
-        }
-        else if (curr_level_struct.num_boss >= 1)
-        {
-            createCowboyBossEnemy(renderer, spawn_pos);
-            curr_level_struct.num_boss--;
         }
     }
 
@@ -525,7 +551,7 @@ void WorldSystem::init_values()
 
     player = registry.players.entities.back();
 
-    printf("Current Level: %d", currLevels.current_level + 1);
+    printf("Current Level: [%d]\n", currLevels.current_level + 1);
 }
 
 // Reset the world state to its initial state
@@ -557,7 +583,7 @@ void WorldSystem::restart_game()
     registry.colors.insert(player, {1, 0.8f, 0.8f});
     update_player_move_dir();
 
-    createNecromancerEnemy(renderer, {window_width_px / 2 + 210, window_height_px / 2});
+    // createNecromancerEnemy(renderer, {window_width_px / 2 + 210, window_height_px / 2});
     GenerateMap(renderer, uniform_dist(rng) * INT32_MAX);
 
     // // create the game walls
@@ -637,13 +663,13 @@ void WorldSystem::projectile_hit_character(Entity laser, Entity character)
         {
             color = {1.f, 0.f, 0.133f};
             scale = 1.25f;
-        } 
-        else 
+        }
+        else
         {
             color = {0.f, 1.f, 1.f};
             scale = 0.87f;
         }
-        
+
         vec2 characterPos = registry.motions.get(character).position;
         vec2 updatedPosition = renderer->calculatePosInCamera(characterPos);
         createText(renderer, "-" + std::to_string(damage), updatedPosition, scale, color);
@@ -714,9 +740,12 @@ void WorldSystem::handle_collisions(float elapsed_ms)
                 vec2 diff = playerMotion.position - wallMotion.position;
                 vec2 wallNorm;
 
-                if (abs(diff.y / wallMotion.scale.y) < abs(diff.x / wallMotion.scale.x)) {
+                if (abs(diff.y / wallMotion.scale.y) < abs(diff.x / wallMotion.scale.x))
+                {
                     wallNorm = {1.0f, 0.0f};
-                } else {
+                }
+                else
+                {
                     wallNorm = {0.0f, 1.0f};
                 }
 
@@ -726,23 +755,30 @@ void WorldSystem::handle_collisions(float elapsed_ms)
                 float xOverlap = (playerMotion.scale.x / 2 + wallMotion.scale.x / 2 - playerMotion.scale.x + bufferGap) - abs(diff.x);
                 float yOverlap = (playerMotion.scale.y / 2 + wallMotion.scale.y / 2 + bufferGap) - abs(diff.y);
 
-     
-                if (wallNorm.x == 1.0f && xOverlap > 0) {  
-                
-                if (diff.x < 0) {                     
-                    playerMotion.position.x -= xOverlap;
-                } else {
-                    playerMotion.position.x += xOverlap;
-                }
-                    playerMotion.velocity.x = slideVelocity.x;
+                if (wallNorm.x == 1.0f && xOverlap > 0)
+                {
 
-                } else if (wallNorm.y == 1.0f && yOverlap > 0) {  
-                
-                if (diff.y < 0) {                             
-                    playerMotion.position.y -= yOverlap;
-                } else {
-                    playerMotion.position.y += yOverlap;
+                    if (diff.x < 0)
+                    {
+                        playerMotion.position.x -= xOverlap;
+                    }
+                    else
+                    {
+                        playerMotion.position.x += xOverlap;
+                    }
+                    playerMotion.velocity.x = slideVelocity.x;
                 }
+                else if (wallNorm.y == 1.0f && yOverlap > 0)
+                {
+
+                    if (diff.y < 0)
+                    {
+                        playerMotion.position.y -= yOverlap;
+                    }
+                    else
+                    {
+                        playerMotion.position.y += yOverlap;
+                    }
                     playerMotion.velocity.y = slideVelocity.y;
                 }
             }
@@ -803,43 +839,53 @@ void WorldSystem::handle_collisions(float elapsed_ms)
                 if (registry.motions.has(entity))
                 {
 
-                Motion &enemyMotion = registry.motions.get(entity);
-                Motion &wallMotion = registry.motions.get(entity_other);
+                    Motion &enemyMotion = registry.motions.get(entity);
+                    Motion &wallMotion = registry.motions.get(entity_other);
 
-                vec2 diff = enemyMotion.position - wallMotion.position;
-                vec2 wallNorm;
+                    vec2 diff = enemyMotion.position - wallMotion.position;
+                    vec2 wallNorm;
 
-                if (abs(diff.y / wallMotion.scale.y) < abs(diff.x / wallMotion.scale.x)) {
-                    wallNorm = {1.0f, 0.0f};
-                } else {
-                    wallNorm = {0.0f, 1.0f};
-                }
+                    if (abs(diff.y / wallMotion.scale.y) < abs(diff.x / wallMotion.scale.x))
+                    {
+                        wallNorm = {1.0f, 0.0f};
+                    }
+                    else
+                    {
+                        wallNorm = {0.0f, 1.0f};
+                    }
 
-                vec2 slideVelocity = enemyMotion.velocity - dot(enemyMotion.velocity, wallNorm) * wallNorm;
+                    vec2 slideVelocity = enemyMotion.velocity - dot(enemyMotion.velocity, wallNorm) * wallNorm;
 
-                float bufferGap = 1.0f;
-                float xOverlap = (enemyMotion.scale.x / 2 + wallMotion.scale.x / 2 - enemyMotion.scale.x + bufferGap) - abs(diff.x);
-                float yOverlap = (enemyMotion.scale.y / 2 + wallMotion.scale.y / 2 + bufferGap) - abs(diff.y);
+                    float bufferGap = 1.0f;
+                    float xOverlap = (enemyMotion.scale.x / 2 + wallMotion.scale.x / 2 - enemyMotion.scale.x + bufferGap) - abs(diff.x);
+                    float yOverlap = (enemyMotion.scale.y / 2 + wallMotion.scale.y / 2 + bufferGap) - abs(diff.y);
 
-     
-                if (wallNorm.x == 1.0f && xOverlap > 0) {  
-                
-                if (diff.x < 0) {                     
-                    enemyMotion.position.x -= xOverlap;
-                } else {
-                    enemyMotion.position.x += xOverlap;
-                }
-                    enemyMotion.velocity.x = slideVelocity.x;
+                    if (wallNorm.x == 1.0f && xOverlap > 0)
+                    {
 
-                } else if (wallNorm.y == 1.0f && yOverlap > 0) {  
-                
-                if (diff.y < 0) {                             
-                    enemyMotion.position.y -= yOverlap;
-                } else {
-                    enemyMotion.position.y += yOverlap;
-                }
-                    enemyMotion.velocity.y = slideVelocity.y;
-                }
+                        if (diff.x < 0)
+                        {
+                            enemyMotion.position.x -= xOverlap;
+                        }
+                        else
+                        {
+                            enemyMotion.position.x += xOverlap;
+                        }
+                        enemyMotion.velocity.x = slideVelocity.x;
+                    }
+                    else if (wallNorm.y == 1.0f && yOverlap > 0)
+                    {
+
+                        if (diff.y < 0)
+                        {
+                            enemyMotion.position.y -= yOverlap;
+                        }
+                        else
+                        {
+                            enemyMotion.position.y += yOverlap;
+                        }
+                        enemyMotion.velocity.y = slideVelocity.y;
+                    }
                 }
             }
 
@@ -1093,10 +1139,10 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
         if (registry.deathTimers.has(player))
             return;
         Motion &motion = registry.motions.get(player);
-        
+
         int w, h;
         glfwGetWindowSize(window, &w, &h);
-        vec2 screenCenter = vec2(w/2, h/2);
+        vec2 screenCenter = vec2(w / 2, h / 2);
         vec2 direction = screenCenter - mouse_position;
         vec2 direction_normalized = normalize(direction);
         float angle = atan2(direction_normalized.y, direction_normalized.x);
@@ -1123,8 +1169,8 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
                         int w, h;
                         glfwGetWindowSize(window, &w, &h);
                         // Motion.position assumes top right is (window_width_px, window_height_px) when the y axis is actually flipped, so negative offset
-                        vec2 textOffset = vec2(0.01*w, -0.01*h);
-                        createText(renderer, "+ 50", vec2(w/2, h/2) + textOffset, 1.25f, {0.0, 1.0, 0.0});
+                        vec2 textOffset = vec2(0.01 * w, -0.01 * h);
+                        createText(renderer, "+ 50", vec2(w / 2, h / 2) + textOffset, 1.25f, {0.0, 1.0, 0.0});
                     }
                 }
                 // Just delete everything from the gesturePath
