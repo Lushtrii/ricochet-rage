@@ -611,7 +611,8 @@ void GenerateMap(RenderSystem *renderer, int seed)
         {
             int value = result.get(y, x);
 
-            if (value == 1)
+            // Outer edge of room or if wfc randomly generates selected tile as wall, create tile)
+            if (value == 1 || x == 0 || y == 0 || x == result.width-1 || y == result.height-1)
                 createTile(renderer, vec2(x, y), tileSize, (TT)value);
         }
     }
