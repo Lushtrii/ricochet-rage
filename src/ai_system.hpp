@@ -27,10 +27,15 @@ private:
     void context_chase(Entity &enemy,  Motion &playerMotion);
     void ranged_enemy_pursue(Entity &enemy, float elapsed_ms, Motion &playerMotion, EnemyState &enemyState);
     void boss_enemy_pursue(Entity &enemy, float elapsed_ms, Motion &playerMotion, EnemyState &enemyState);
+    void chase_with_a_star(Pathfinder &pathfinder, float elapsed_ms, Motion &playerMotion, Motion &enemyMotion);
+    void update_path(Motion &playerMotion, Motion &enemyMotion, Pathfinder &pathfinder);
     void stop_and_melee(Entity &enemy, MeleeAttack &counter, float elapsed_ms, Motion &playerMotion, Entity &playerEntity);
     bool line_of_sight_check(Entity &enemy, Motion &playerMotion);
     bool line_box_collision(Motion &enemyMotion, Motion &obstacleMotion, vec2 &directionDelta);
     vec2 quadratic_bezier(float t, float max_time);
+    void astar_pathfinding(GridMap& grid, GridNode* startNode, GridNode* endNode, Pathfinder &pathfinder);
+    void reset_grid(GridMap &gridMap);
+    void interpolate_pathfinding(Motion &enemyMotion, Pathfinder &pathfinder, Motion &playerMotion);
 
     const float rangedEnemySpeed = 50.f;
     const float meleeEnemySpeed = 100.f;
@@ -49,6 +54,9 @@ private:
     const float shotgun_angle = M_PI/8.0f;
     const float tp_to_player_range = 300.0f;
     const float minionDistance = 90.0f;
+
+    const int a_star_frame_updates = 100;
+    int a_star_frame = 100;
 
     // C++ random number generator
     std::default_random_engine rng;

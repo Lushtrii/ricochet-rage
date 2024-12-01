@@ -42,6 +42,8 @@ public:
     ComponentContainer<Teleporting> teleporting;
     ComponentContainer<Light> lights;
     ComponentContainer<Necromancer> necromancers;
+    ComponentContainer<GridMap> gridMaps;
+    ComponentContainer<Pathfinder> pathfinders;
     ComponentContainer<LightUp> lightUps;
 
     // constructor that adds all containers for looping over them
@@ -76,6 +78,8 @@ public:
         registry_list.push_back(&teleporting);
         registry_list.push_back(&lights);
         registry_list.push_back(&necromancers);
+        registry_list.push_back(&gridMaps);
+        registry_list.push_back(&pathfinders);
         registry_list.push_back(&lightUps);
     }
 

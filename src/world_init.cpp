@@ -128,6 +128,14 @@ void SaveGameToFile(RenderSystem *renderer)
             f << r.shoot_rate << "\n";
             f << r.take_aim_ms << "\n";
         }
+        if (registry.meleeAttacks.has(e))
+        {
+            MeleeAttack &m = registry.meleeAttacks.get(e);
+            f << "meleeAttack" << "\n";
+            f << m.damage << "\n";
+            f << m.windup << "\n";
+            f << m.windupMax << "\n";
+        }
         if (registry.powerUps.has(e))
         {
             PowerUp &p = registry.powerUps.get(e);
@@ -184,17 +192,52 @@ void SaveGameToFile(RenderSystem *renderer)
             f << necro.centerPosition.x << "\n";
             f << necro.centerPosition.y << "\n";
         }
+        if (registry.pathfinders.has(e))
+        {
+            Pathfinder& pathfinder = registry.pathfinders.get(e);
+            f << "pathfinder" << "\n";
+            // Just let it find the path again
+            f << pathfinder.refresh_rate << "\n";
+            f << pathfinder.max_refresh_rate << "\n";
+        }
         if (registry.lightUps.has(e))
         {
             LightUp &l = registry.lightUps.get(e);
             f << "light_up" << "\n";
             f << l.timer << "\n";
         }
-        // Save current level
-        f << "currentlevel" << "\n";
-        f << currLevels.current_level << "\n";
-        f << currLevels.total_level_index << "\n";
     }
+    // Save current level
+    f << "currentlevel" << "\n";
+    f << currLevels.current_level << "\n";
+    f << currLevels.total_level_index << "\n";
+
+    // Save grid map
+    // Assume one grid map
+    if (registry.gridMaps.size() > 0) {
+        GridMap& gm = registry.gridMaps.get(registry.gridMaps.entities[0]);
+        f << "gridMap" << "\n";
+        f << gm.mapWidth << "\n";
+        f << gm.mapHeight << "\n";
+        f << gm.matrixWidth << "\n";
+        f << gm.matrixHeight << "\n";
+        for (int j = 0; j < gm.matrixHeight; j++) {
+            for (int i = 0; i < gm.matrixWidth; i++) {
+                auto &gridNode = gm.gridMap[j][i];
+                f << "gridNode" << "\n";
+                f << gridNode.position.x << "\n"
+                    << gridNode.position.y << "\n"; 
+                f << gridNode.coord.x << "\n"
+                    << gridNode.coord.y << "\n"; 
+                f << gridNode.size.x << "\n"
+                    << gridNode.size.y << "\n";
+                f << gridNode.notWalkable << "\n";
+                // Other values are dynamic
+            }
+        }
+    }
+
+
     f.close();
 }
 
@@ -343,6 +386,13 @@ bool LoadGameFromFile(RenderSystem *renderer)
             r.shoot_rate = LoadFloat(f);
             r.take_aim_ms = LoadFloat(f);
         }
+        else if (line == "meleeAttack")
+        {
+            MeleeAttack &m = registry.meleeAttacks.emplace(e);
+            m.damage = LoadInt(f);
+            m.windup = LoadFloat(f);
+            m.windupMax = LoadFloat(f);
+        }
         else if (line == "power_up")
         {
             PowerUp &p = registry.powerUps.emplace(e);
@@ -396,6 +446,48 @@ bool LoadGameFromFile(RenderSystem *renderer)
             n.spawningMinions = LoadBool(f);
             n.centerPosition.x = LoadFloat(f);
             n.centerPosition.y = LoadFloat(f);
+        }
+        else if (line == "pathfinder")
+        {
+            Pathfinder& p = registry.pathfinders.emplace(e);
+            p.refresh_rate = LoadFloat(f);
+            p.max_refresh_rate = LoadFloat(f);
+        }
+        else if (line == "gridMap")
+        {
+            e = Entity();
+            GridMap& gm = registry.gridMaps.emplace(e);
+            gm.mapWidth = LoadInt(f);
+            gm.mapHeight = LoadInt(f);
+            gm.matrixWidth = LoadInt(f);
+            gm.matrixHeight = LoadInt(f);
+            // Load the gridNode
+            std::vector<std::vector<GridNode>> gridMap;
+            gridMap.resize(gm.matrixHeight);
+            for (auto& row : gridMap) {
+                row.resize(gm.matrixWidth);
+            }
+            for (int j = 0; j < gm.matrixHeight; j++) {
+                for (int i = 0; i < gm.matrixWidth; i++) {
+                    getline(f, line);
+                    if (line == "gridNode") {
+                        GridNode gridNode;
+                        gridNode.position.x = LoadFloat(f);
+                        gridNode.position.y = LoadFloat(f);
+                        gridNode.coord.x = LoadInt(f);
+                        gridNode.coord.y = LoadInt(f);
+                        gridNode.size.x = LoadFloat(f);
+                        gridNode.size.y = LoadFloat(f);
+                        gridNode.notWalkable = LoadBool(f);
+                        gridNode.gCost = 1e9;
+                        gridNode.hCost = 0.0f;
+                        gridNode.parentNode = nullptr;
+                        gridMap[j][i] = gridNode;
+                    }
+                }
+            }
+            gm.gridMap = gridMap;
+            printf("%d size \n", registry.gridMaps.size());
         }
         else if (line == "light_up")
         {
@@ -616,11 +708,25 @@ void GenerateMap(RenderSystem *renderer, int seed)
     }
 
     vec2 tileSize = vec2(50, 50);
+    
+    // Create grid map
+    auto gridMapEntity = Entity();
+    GridMap &gridMapComp = registry.gridMaps.emplace(gridMapEntity);
+    auto &gridMapVec = gridMapComp.gridMap;
+    gridMapComp.mapWidth = (int) floor(result.width * tileSize.x);
+    gridMapComp.mapHeight = (int) floor(result.height * tileSize.y);
+    gridMapComp.matrixWidth = result.width;
+    gridMapComp.matrixHeight = result.height;
+    gridMapVec.resize(result.height);
+    for (auto& row : gridMapVec) {
+        row.resize(result.width);
+    }
     for (int x = 0; x < result.width; x++)
     {
         for (int y = 0; y < result.height; y++)
         {
             int value = result.get(y, x);
+            createGridNode(gridMapVec, vec2(x, y), tileSize, value);
 
             // Outer edge of room or if wfc randomly generates selected tile as wall, create tile)
             if (value == 1 || x == 0 || y == 0 || x == result.width-1 || y == result.height-1)
@@ -632,6 +738,19 @@ void GenerateMap(RenderSystem *renderer, int seed)
 void createTile(RenderSystem *renderer, vec2 pos, vec2 size, TT type)
 {
     createWall(renderer, (pos * size.x) + (size * 0.5f), size);
+}
+
+void createGridNode(std::vector<std::vector<GridNode>> &gridMap, vec2 pos, vec2 size, int value)
+{
+    GridNode newGridNode = {(pos * size.x) + (size * 0.5f),
+        pos,
+        size,
+        static_cast<bool>(value),
+        1e9,
+        0.0f,
+        nullptr
+        };
+    gridMap[pos.y][pos.x] = newGridNode;
 }
 
 Entity createPlayer(RenderSystem *renderer, vec2 pos)
@@ -706,6 +825,8 @@ Entity createMeleeEnemy(RenderSystem *renderer, vec2 position)
     raycast.ray_distance = 1000;
     raycast.ray_width = ENEMY_BB_WIDTH;
 
+    registry.pathfinders.emplace(entity);
+
     registry.renderRequests.insert(
         entity,
         {TEXTURE_ASSET_ID::MELEE_ENEMY,
@@ -748,6 +869,8 @@ Entity createRangedEnemy(RenderSystem *renderer, vec2 position)
     LineOfSight &raycast = registry.lightOfSight.emplace(entity);
     raycast.ray_distance = 1000;
     raycast.ray_width = ENEMY_BB_WIDTH;
+
+    registry.pathfinders.emplace(entity);
 
     registry.renderRequests.insert(
         entity,
@@ -792,7 +915,6 @@ Entity createCowboyBossEnemy(RenderSystem *renderer, vec2 position)
     registry.teleporters.emplace(entity);
 
     registry.bosses.emplace(entity);
-    registry.necromancers.emplace(entity);
 
     Animation &animation = registry.animations.emplace(entity);
     animation.sprite_height = 32;
@@ -804,9 +926,11 @@ Entity createCowboyBossEnemy(RenderSystem *renderer, vec2 position)
     raycast.ray_distance = 1000;
     raycast.ray_width = ENEMY_BB_WIDTH;
 
+    registry.pathfinders.emplace(entity);
+
     registry.renderRequests.insert(
         entity,
-        {TEXTURE_ASSET_ID::NECROMANCER_ENEMY,
+        {TEXTURE_ASSET_ID::BOSS_ENEMY,
          EFFECT_ASSET_ID::TEXTURED,
          GEOMETRY_BUFFER_ID::SPRITE});
 
@@ -847,6 +971,8 @@ Entity createMeleeMinion(RenderSystem *renderer, vec2 position)
     LineOfSight &raycast = registry.lightOfSight.emplace(entity);
     raycast.ray_distance = 1000;
     raycast.ray_width = ENEMY_BB_WIDTH;
+
+    registry.pathfinders.emplace(entity);
 
     registry.renderRequests.insert(
         entity,
@@ -890,6 +1016,8 @@ Entity createRangedMinion(RenderSystem *renderer, vec2 position)
     LineOfSight &raycast = registry.lightOfSight.emplace(entity);
     raycast.ray_distance = 1000;
     raycast.ray_width = ENEMY_BB_WIDTH;
+
+    registry.pathfinders.emplace(entity);
 
     registry.renderRequests.insert(
         entity,
@@ -935,6 +1063,8 @@ Entity createNecromancerEnemy(RenderSystem *renderer, vec2 position)
 
     registry.bosses.emplace(entity);
     registry.necromancers.emplace(entity);
+
+    registry.pathfinders.emplace(entity);
 
     Animation &animation = registry.animations.emplace(entity);
     animation.sprite_height = 32;

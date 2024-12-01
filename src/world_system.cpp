@@ -599,14 +599,15 @@ void WorldSystem::restart_game()
 
     // Debugging for memory/component leaks
     registry.list_all_components();
-
+    
+    // Clear map grid
+    registry.gridMaps.clear();
+    GenerateMap(renderer, uniform_dist(rng) * INT32_MAX);
     // create a new player
     createPlayer(renderer, {30, window_height_px});
     init_values();
     registry.colors.insert(player, {1, 0.8f, 0.8f});
     update_player_move_dir();
-
-    GenerateMap(renderer, uniform_dist(rng) * INT32_MAX);
 }
 
 void WorldSystem::projectile_hit_character(Entity laser, Entity character)

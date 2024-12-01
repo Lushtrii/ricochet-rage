@@ -331,6 +331,31 @@ struct CurrLevels
 };
 extern CurrLevels currLevels;
 
+struct GridNode {
+    vec2 position;
+    ivec2 coord;
+    vec2 size;
+    bool notWalkable;
+    float gCost; 
+    float hCost;
+    float fCost() const { return gCost + hCost; }
+    GridNode* parentNode; 
+};
+
+struct GridMap {
+    std::vector<std::vector<GridNode>> gridMap;
+    int mapWidth = window_width_px;
+    int mapHeight = window_height_px;
+    int matrixWidth = 0;
+    int matrixHeight = 0;
+};
+
+struct Pathfinder {
+    std::vector<GridNode*> path;
+    float refresh_rate = 1000.0f;
+    float max_refresh_rate = 1000.0f;
+};
+
 /**
  * The following enumerators represent global identifiers refering to graphic
  * assets. For example TEXTURE_ASSET_ID are the identifiers of each texture

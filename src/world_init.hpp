@@ -51,6 +51,7 @@ bool doesSaveFileExist(RenderSystem *renderer);
 void NextRoom(RenderSystem *renderer, int seed);
 void GenerateMap(RenderSystem *renderer, int seed);
 void createTile(RenderSystem *renderer, vec2 pos, vec2 size, TT type);
+void createGridNode(std::vector<std::vector<GridNode>> &gridMap, vec2 pos, vec2 size, int value);
 // the player
 Entity createPlayer(RenderSystem *renderer, vec2 pos);
 
