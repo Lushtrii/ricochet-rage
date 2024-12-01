@@ -93,6 +93,7 @@ private:
     Mix_Chunk *invincibility_sound;
     Mix_Chunk *super_bullets_sound;
     Mix_Chunk *health_stealer_sound;
+    Mix_Chunk *level_cleared_sound;
 
     // level num, num of melee, num of ranged, num of boss, ms between spawns
     LevelStruct level_1 = {1, 5, 0, 0, 500};

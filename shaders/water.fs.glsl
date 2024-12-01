@@ -3,6 +3,7 @@
 uniform sampler2D screen_texture;
 uniform float time;
 uniform float darken_screen_factor;
+uniform float light_up;
 
 uniform bool distort_on;
 
@@ -47,7 +48,11 @@ vec4 fade_color(vec4 in_color)
 {
 	if (darken_screen_factor > 0)
 		in_color -= darken_screen_factor * vec4(0.8, 0.8, 0.8, 0);
-	return in_color;
+
+	if (light_up > 0)
+        in_color += light_up * vec4(0.3, 0.3, 0.3, 0);
+
+    return clamp(in_color, 0.0, 1.0);
 }
 
 void main()

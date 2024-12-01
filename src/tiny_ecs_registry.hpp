@@ -37,18 +37,17 @@ public:
     ComponentContainer<Animation> animations;
     ComponentContainer<HealthBar> healthBars;
     ComponentContainer<Boss> bosses;
-    ComponentContainer<TextRenderRequest> textRenderRequests;
     ComponentContainer<Text> texts;
     ComponentContainer<Teleporter> teleporters;
     ComponentContainer<Teleporting> teleporting;
     ComponentContainer<Light> lights;
     ComponentContainer<Necromancer> necromancers;
+    ComponentContainer<LightUp> lightUps;
 
     // constructor that adds all containers for looping over them
     // IMPORTANT: Don't forget to add any newly added containers!
     ECSRegistry()
     {
-        // TODO: A1 add a LightUp component
         registry_list.push_back(&deathTimers);
         registry_list.push_back(&motions);
         registry_list.push_back(&collisions);
@@ -72,12 +71,12 @@ public:
         registry_list.push_back(&animations);
         registry_list.push_back(&healthBars);
         registry_list.push_back(&bosses);
-        registry_list.push_back(&textRenderRequests);
         registry_list.push_back(&texts);
         registry_list.push_back(&teleporters);
         registry_list.push_back(&teleporting);
         registry_list.push_back(&lights);
         registry_list.push_back(&necromancers);
+        registry_list.push_back(&lightUps);
     }
 
     void clear_all_components()

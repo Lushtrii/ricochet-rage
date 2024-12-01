@@ -229,7 +229,6 @@ void RenderSystem::drawToScreen()
 	// get the water texture, sprite mesh, and program
 	glUseProgram(effects[(GLuint)EFFECT_ASSET_ID::WATER]);
 
-
 	GLuint distortion_on = glGetUniformLocation(effects[(GLuint)EFFECT_ASSET_ID::WATER], "distort_on");
 
     if (toggle == DISTORT_ON) {
@@ -237,8 +236,6 @@ void RenderSystem::drawToScreen()
     } else {
         glUniform1i(distortion_on, 0); 
     }
-
-
 
 	gl_has_errors();
 	// Clearing backbuffer
@@ -264,12 +261,22 @@ void RenderSystem::drawToScreen()
 	// Set clock
 	GLuint time_uloc = glGetUniformLocation(water_program, "time");
 	GLuint dead_timer_uloc = glGetUniformLocation(water_program, "darken_screen_factor");
+	GLuint light_up_uloc = glGetUniformLocation(water_program, "light_up");
 	glUniform1f(time_uloc, (float)(glfwGetTime() * 10.0f));
 	ScreenState &screen = registry.screenStates.get(screen_state_entity);
 	glUniform1f(dead_timer_uloc, screen.darken_screen_factor);
 	gl_has_errors();
 	// Set the vertex position and vertex texture coordinates (both stored in the
 	// same VBO)
+
+	// Set high score flash value
+    float light_up_amount = 0.f;
+    if (registry.lightUps.has(screen_state_entity)) {
+        LightUp& lightUp = registry.lightUps.get(screen_state_entity);
+        light_up_amount = lightUp.timer / 1.5f;
+    }
+    glUniform1f(light_up_uloc, light_up_amount);
+
 	GLint in_position_loc = glGetAttribLocation(water_program, "in_position");
 	glEnableVertexAttribArray(in_position_loc);
 	glVertexAttribPointer(in_position_loc, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void *)0);

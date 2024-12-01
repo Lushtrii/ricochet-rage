@@ -184,6 +184,12 @@ void SaveGameToFile(RenderSystem *renderer)
             f << necro.centerPosition.x << "\n";
             f << necro.centerPosition.y << "\n";
         }
+        if (registry.lightUps.has(e))
+        {
+            LightUp &l = registry.lightUps.get(e);
+            f << "light_up" << "\n";
+            f << l.timer << "\n";
+        }
         // Save current level
         f << "currentlevel" << "\n";
         f << currLevels.current_level << "\n";
@@ -390,6 +396,11 @@ bool LoadGameFromFile(RenderSystem *renderer)
             n.spawningMinions = LoadBool(f);
             n.centerPosition.x = LoadFloat(f);
             n.centerPosition.y = LoadFloat(f);
+        }
+        else if (line == "light_up")
+        {
+            LightUp &l = registry.lightUps.emplace(e);
+            l.timer = LoadFloat(f);
         }
     }
 

@@ -230,6 +230,11 @@ struct Mesh
     std::vector<uint16_t> uv_indices;
 };
 
+struct LightUp
+{
+    float timer = 2.5f;
+};
+
 struct Animation
 {
     float current_time = 0.f;

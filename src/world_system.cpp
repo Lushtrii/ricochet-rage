@@ -72,6 +72,8 @@ WorldSystem::~WorldSystem()
         Mix_FreeChunk(super_bullets_sound);
     if (health_stealer_sound != nullptr)
         Mix_FreeChunk(health_stealer_sound);
+    if (level_cleared_sound != nullptr)
+        Mix_FreeChunk(level_cleared_sound);
 
     Mix_CloseAudio();
 
@@ -169,8 +171,9 @@ GLFWwindow *WorldSystem::create_window()
     invincibility_sound = Mix_LoadWAV(audio_path("invincibility.wav").c_str());
     super_bullets_sound = Mix_LoadWAV(audio_path("super-bullets.wav").c_str());
     health_stealer_sound = Mix_LoadWAV(audio_path("health-stealer.wav").c_str());
+    level_cleared_sound = Mix_LoadWAV(audio_path("level-cleared.wav").c_str());
 
-    if (background_music == nullptr || player_death_sound == nullptr || enemy_death_sound == nullptr || laser_shot_sound == nullptr)
+    if (background_music == nullptr || player_death_sound == nullptr || enemy_death_sound == nullptr || laser_shot_sound == nullptr || invincibility_sound == nullptr || super_bullets_sound == nullptr || health_stealer_sound == nullptr || level_cleared_sound == nullptr)
     {
         fprintf(stderr, "Failed to load sounds\n %s\n %s\n %s\n %s\n make sure the data directory is present",
                 audio_path("background-music.wav").c_str(),
@@ -179,7 +182,8 @@ GLFWwindow *WorldSystem::create_window()
                 audio_path("laser-shot-sound.wav").c_str(),
                 audio_path("invincibility.wav").c_str(),
                 audio_path("super-bullets.wav").c_str(),
-                audio_path("health-stealer.wav").c_str());
+                audio_path("health-stealer.wav").c_str(),
+                audio_path("level-cleared.wav").c_str());
         return nullptr;
     }
 
@@ -480,23 +484,42 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     }
 
     // Level cleared, going to next level
-    if (!enemiesLeft && (int)registry.enemies.entities.size() == 0)
+    if (!enemiesLeft && (int)registry.enemies.entities.size() == 0 && (int)registry.lightUps.entities.size() == 0)
     {
-        printf("NEXT LEVEL");
-        currLevels.current_level++;
-        if (currLevels.current_level == currLevels.total_level_index)
-        {
-            renderer->setActiveScreen((int)SCREEN_ID::WIN_SCREEN);
-            renderer->flipActiveButtions(renderer->getActiveScreen());
-            reset_level();
-            m_isPaused = true;
-            std::remove("../Save1.data");
+        Entity screen_state_entity = registry.screenStates.entities[0];
+		registry.lightUps.emplace(screen_state_entity);
+
+        Motion &motion = registry.motions.get(player);
+        motion.velocity = vec2(0, 0);
+
+        Mix_PlayChannel(-1, level_cleared_sound, 0);
+    }
+
+    Entity screen_state_entity = registry.screenStates.entities[0];
+    if (registry.lightUps.has(screen_state_entity))
+    {
+        LightUp& lightUp = registry.lightUps.get(screen_state_entity);
+        lightUp.timer -= elapsed_ms_since_last_update / 1000.f;
+        
+        if (lightUp.timer < 0) {
+            registry.lightUps.remove(screen_state_entity);
+
+            printf("NEXT LEVEL");
+            currLevels.current_level++;
+            if (currLevels.current_level == currLevels.total_level_index)
+            {
+                renderer->setActiveScreen((int)SCREEN_ID::WIN_SCREEN);
+                renderer->flipActiveButtions(renderer->getActiveScreen());
+                reset_level();
+                m_isPaused = true;
+                std::remove("../Save1.data");
+                restart_game();
+                return true;
+            }
+            currLevels.currStruct = levels[currLevels.current_level];
             restart_game();
-            return true;
-        }
-        currLevels.currStruct = levels[currLevels.current_level];
-        restart_game();
         return true;
+        }
     }
 
     // spawn power ups
@@ -583,46 +606,7 @@ void WorldSystem::restart_game()
     registry.colors.insert(player, {1, 0.8f, 0.8f});
     update_player_move_dir();
 
-    // createNecromancerEnemy(renderer, {window_width_px / 2 + 210, window_height_px / 2});
     GenerateMap(renderer, uniform_dist(rng) * INT32_MAX);
-
-    // // create the game walls
-    // createWall(renderer, vec2(window_width_px / 2.f, window_height_px / 2.f), vec2(100, 100), 0);
-    // createWall(renderer, vec2(window_width_px / 2.f + 100, window_height_px / 2.f), vec2(100, 100), 0);
-
-    // // updated wall
-    // // top right corner
-    // createWall(renderer, vec2(window_width_px - 50, window_height_px - 675), vec2(50, 50), 0);
-
-    // // top left corner
-    // createWall(renderer, vec2(window_width_px - 1200, window_height_px - 675), vec2(50, 50), 0);
-
-    // // bot right corner
-    // createWall(renderer, vec2(window_width_px - 50, window_height_px - 75), vec2(50, 50), 0);
-
-    // // bot left corner
-    // createWall(renderer, vec2(window_width_px - 1200, window_height_px - 75), vec2(50, 50), 0);
-
-    // for (int i = 100; i <= 1150; i += 50)
-    // {
-    //     // Top wall
-    //     createWall(renderer, vec2(window_width_px - i, window_height_px - 675), vec2(50, 50), 0);
-
-    //     // Bottom wall
-    //     createWall(renderer, vec2(window_width_px - i, window_height_px - 75), vec2(50, 50), 0);
-    // }
-
-    // for (int i = 125; i <= 625; i += 50)
-    // {
-    //     // Left wall
-    //     createWall(renderer, vec2(window_width_px - 1200, window_height_px - i), vec2(50, 50), 0);
-
-    //     // Right wall
-    //     createWall(renderer, vec2(window_width_px - 50, window_height_px - i), vec2(50, 50), 0);
-    // }
-
-    // create power ups
-    // createInvincibilityPowerUp(renderer, {window_width_px / 2.f - 100, window_height_px / 2.f - 100});
 }
 
 void WorldSystem::projectile_hit_character(Entity laser, Entity character)
@@ -975,8 +959,10 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     Motion &motion = registry.motions.get(player);
+    Entity screen_state_entity = registry.screenStates.entities[0];
+    bool lightUpOn = registry.lightUps.has(screen_state_entity);
 
-    if (!registry.deathTimers.has(player))
+    if (!registry.deathTimers.has(player) && !lightUpOn)
     {
         // player dashing
         if (action == GLFW_PRESS && key == GLFW_KEY_SPACE)
@@ -1015,7 +1001,7 @@ void WorldSystem::on_key(int key, int, int action, int mod)
         {
             motion.last_move_direction = normalize(move_direction);
         }
-        if (!registry.deathTimers.has(player))
+        if (!registry.deathTimers.has(player) && !lightUpOn)
         {
             update_player_move_dir();
         }
@@ -1023,7 +1009,7 @@ void WorldSystem::on_key(int key, int, int action, int mod)
 
     /* Entity mainMenuEntity; */
     // Exiting game on Esc
-    if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE && !registry.deathTimers.has(player))
+    if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE && !registry.deathTimers.has(player) && !lightUpOn)
     {
         int activeScreen = renderer->getActiveScreen();
         if (activeScreen == (int)SCREEN_ID::MAIN_MENU || activeScreen == (int)SCREEN_ID::DEATH_SCREEN)
@@ -1064,37 +1050,25 @@ void WorldSystem::on_key(int key, int, int action, int mod)
     }
 
     // Debugging
-    if (key == GLFW_KEY_D)
-    {
-        if (action == GLFW_RELEASE)
-            debugging.in_debug_mode = false;
-        else
-            debugging.in_debug_mode = true;
-    }
-
-    if (action == GLFW_PRESS)
-    {
-        if (key == GLFW_KEY_2)
-        {
-            toggle = DISTORT_ON;
-        }
-        else if (key == GLFW_KEY_1)
-        {
-            toggle = DISTORT_OFF;
-        }
-    }
+    // if (key == GLFW_KEY_D)
+    // {
+    //     if (action == GLFW_RELEASE)
+    //         debugging.in_debug_mode = false;
+    //     else
+    //         debugging.in_debug_mode = true;
+    // }
 
     // Control the current speed with `<` `>`
-    if (action == GLFW_RELEASE && (mod & GLFW_MOD_SHIFT) && key == GLFW_KEY_COMMA)
-    {
-        current_speed -= 0.1f;
-        printf("Current speed = %f\n", current_speed);
-    }
-    if (action == GLFW_RELEASE && (mod & GLFW_MOD_SHIFT) && key == GLFW_KEY_PERIOD)
-    {
-        current_speed += 0.1f;
-        printf("Current speed = %f\n", current_speed);
-    }
+    // if (action == GLFW_RELEASE && (mod & GLFW_MOD_SHIFT) && key == GLFW_KEY_COMMA)
+    // {
+    //     current_speed -= 0.1f;
+    //     printf("Current speed = %f\n", current_speed);
+    // }
+    // if (action == GLFW_RELEASE && (mod & GLFW_MOD_SHIFT) && key == GLFW_KEY_PERIOD)
+    // {
+    //     current_speed += 0.1f;
+    //     printf("Current speed = %f\n", current_speed);
+    // }
     current_speed = fmax(0.f, current_speed);
 }
 
@@ -1138,6 +1112,11 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
     {
         if (registry.deathTimers.has(player))
             return;
+        
+        Entity screen_state_entity = registry.screenStates.entities[0];
+        if (registry.lightUps.has(screen_state_entity))
+            return;
+
         Motion &motion = registry.motions.get(player);
 
         int w, h;
