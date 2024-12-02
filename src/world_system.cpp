@@ -214,6 +214,9 @@ void WorldSystem::init(RenderSystem *renderer_arg)
         currLevelStruct->num_melee = levelStruct->num_melee;
         currLevelStruct->num_ranged = levelStruct->num_ranged;
         currLevelStruct->num_boss = levelStruct->num_boss;
+        currLevelStruct->max_active_melee = levelStruct->max_active_melee;
+        currLevelStruct->max_active_ranged = levelStruct->max_active_ranged;
+        currLevelStruct->wave_size = levelStruct->wave_size;
         currLevelStruct->enemy_spawn_time = levelStruct->enemy_spawn_time;
         currLevels.currStruct = currLevelStruct;
         restart_game();
@@ -235,11 +238,16 @@ vec2 WorldSystem::create_spawn_position()
     bool is_valid_spawn = false;
     vec2 spawn_pos;
 
+    vec2 roomTileSize = {50, 50};
+    vec2 roomTileDimensions = {50, 30};
+    float roomWidth = roomTileSize.x * roomTileDimensions.x;
+    float roomHeight = roomTileSize.y * roomTileDimensions.y;
+
     while (!is_valid_spawn)
     {
         spawn_pos = {
-            150.f + uniform_dist(rng) * (window_width_px - 300.f),
-            150.f + uniform_dist(rng) * (window_height_px - 300.f)};
+            150.f + uniform_dist(rng) * (roomWidth - 300.f),
+            150.f + uniform_dist(rng) * (roomHeight - 300.f)};
         is_valid_spawn = true;
 
         // Check if it collides with the player
@@ -471,55 +479,77 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
 
     // spawn new enemies
     next_enemy_spawn -= elapsed_ms_since_last_update * current_speed;
-    LevelStruct *curr_level_struct = currLevels.currStruct;
-    bool enemiesLeft = (curr_level_struct->num_melee + curr_level_struct->num_ranged + curr_level_struct->num_boss) > 0;
-    if (enemiesLeft && next_enemy_spawn < 0.f)
+    LevelStruct &curr_level_struct = *currLevels.currStruct;
+    bool enemiesLeft = (curr_level_struct.num_melee + curr_level_struct.num_ranged + curr_level_struct.num_boss) > 0;
+    int maxBasicEnemies = curr_level_struct.max_active_melee + curr_level_struct.max_active_ranged;
+    bool canSpawnMelee = currNumMelees < curr_level_struct.max_active_melee && curr_level_struct.num_melee > 0;
+    bool canSpawnRanged = currNumRanged < curr_level_struct.max_active_ranged && curr_level_struct.num_ranged > 0;
+    
+    // Basic enemy spawn
+    if (enemiesLeft && (canSpawnMelee || canSpawnRanged) && next_enemy_spawn < 0.f)
     {
-        next_enemy_spawn = (curr_level_struct->enemy_spawn_time * 0.5) + uniform_dist(rng) * curr_level_struct->enemy_spawn_time;
+        next_enemy_spawn = (curr_level_struct.enemy_spawn_time * 0.5) + uniform_dist(rng) * curr_level_struct.enemy_spawn_time;
+
+        for (int i = 0; i < curr_level_struct.wave_size; i++) {
+            maxBasicEnemies = curr_level_struct.max_active_melee + curr_level_struct.max_active_ranged;
+            bool canSpawnMelee = currNumMelees < curr_level_struct.max_active_melee && curr_level_struct.num_melee > 0;
+            bool canSpawnRanged = currNumRanged < curr_level_struct.max_active_ranged && curr_level_struct.num_ranged > 0;
+            if (!canSpawnMelee && !canSpawnRanged) {
+                break;
+            }
+
+            vec2 spawn_pos = create_spawn_position();
+            std::cout << "NUM: " << curr_level_struct.num_melee << " "
+                      << curr_level_struct.num_ranged << " "
+                      << curr_level_struct.num_boss << " "
+                      << std::endl;
+
+            if (!canSpawnMelee) {
+                createRangedEnemy(renderer, spawn_pos);
+                curr_level_struct.num_ranged--;
+                currNumEnemies++;
+                currNumRanged++;
+                continue;
+            }
+            else if (!canSpawnRanged) {
+                createMeleeEnemy(renderer, spawn_pos);
+                curr_level_struct.num_melee--;
+                currNumEnemies++;
+                currNumMelees++;
+                continue;
+            }
+
+            float rand = uniform_dist(rng) * 2.0f;
+            std::cout << "Rand num:" << rand << std::endl;
+
+            if (rand <= 1)
+            {
+                createMeleeEnemy(renderer, spawn_pos);
+                curr_level_struct.num_melee--;
+                currNumEnemies++;
+                currNumMelees++;
+            }
+            else if (rand <= 2)
+            {
+                createRangedEnemy(renderer, spawn_pos);
+                curr_level_struct.num_ranged--;
+                currNumEnemies++;
+                currNumRanged++;
+            }
+        }
+    }
+    if (enemiesLeft && curr_level_struct.num_boss >= 1) {
         vec2 spawn_pos = create_spawn_position();
-        std::cout << "NUM: " << curr_level_struct->num_melee << " "
-                  << curr_level_struct->num_ranged << " "
-                  << curr_level_struct->num_boss << " "
-                  << std::endl;
-
-        float rand;
-        if (curr_level_struct->num_melee >= 1 && curr_level_struct->num_ranged >= 1)
+        if (curr_level_struct.level_num == 5)
         {
-            rand = uniform_dist(rng) * 2.0f;
-            // std::cout << rand << " RAND" << std::endl;
+            createCowboyBossEnemy(renderer, spawn_pos);
         }
-        else if (curr_level_struct->num_melee >= 1)
+        else
         {
-            rand = 1;
+            createNecromancerEnemy(renderer, spawn_pos);
         }
-        else if (curr_level_struct->num_ranged >= 1)
-        {
-            rand = 2;
-        }
-
-        if (curr_level_struct->num_boss >= 1)
-        {
-            if (curr_level_struct->level_num == 5)
-            {
-                createCowboyBossEnemy(renderer, spawn_pos);
-            }
-            else
-            {
-                createNecromancerEnemy(renderer, spawn_pos);
-            }
-
-            curr_level_struct->num_boss--;
-        }
-        else if (rand <= 1)
-        {
-            createMeleeEnemy(renderer, spawn_pos);
-            curr_level_struct->num_melee--;
-        }
-        else if (rand <= 2)
-        {
-            createRangedEnemy(renderer, spawn_pos);
-            curr_level_struct->num_ranged--;
-        }
+        currNumEnemies++;
+        curr_level_struct.num_boss--;
     }
 
     // Level cleared, going to next level
@@ -561,6 +591,9 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
             currLevelStruct->num_melee = levelStruct->num_melee;
             currLevelStruct->num_ranged = levelStruct->num_ranged;
             currLevelStruct->num_boss = levelStruct->num_boss;
+            currLevelStruct->max_active_melee = levelStruct->max_active_melee;
+            currLevelStruct->max_active_ranged = levelStruct->max_active_ranged;
+            currLevelStruct->wave_size = levelStruct->wave_size;
             currLevelStruct->enemy_spawn_time = levelStruct->enemy_spawn_time;
             currLevels.currStruct = currLevelStruct;
             restart_game();
@@ -613,6 +646,9 @@ void WorldSystem::reset_level()
     currLevelStruct->num_melee = levelStruct->num_melee;
     currLevelStruct->num_ranged = levelStruct->num_ranged;
     currLevelStruct->num_boss = levelStruct->num_boss;
+    currLevelStruct->max_active_melee = levelStruct->max_active_melee;
+    currLevelStruct->max_active_ranged = levelStruct->max_active_ranged;
+    currLevelStruct->wave_size = levelStruct->wave_size;
     currLevelStruct->enemy_spawn_time = levelStruct->enemy_spawn_time;
 }
 
@@ -772,6 +808,13 @@ void WorldSystem::health_check(Health &health, const Entity &character)
         {
             // If enemy dies, remove all components of the enemy
             Mix_PlayChannel(-1, enemy_death_sound, 0);
+            if (registry.meleeAttacks.has(character) && !registry.bosses.has(character)) {
+                currNumMelees--;
+            }
+            else if (registry.reloadTimes.has(character) && !registry.bosses.has(character)) {
+                currNumRanged--;
+            }
+            currNumEnemies--;
             registry.remove_all_components_of(character);
         }
     }

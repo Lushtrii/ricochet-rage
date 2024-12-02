@@ -13,18 +13,18 @@
 #include <fstream>
 #include <string>
 #include <unordered_set>
-LevelStruct level_1 = {1, 5, 0, 0, 500};
-LevelStruct level_2 = {2, 0, 5, 0, 450};
-LevelStruct level_3 = {3, 10, 10, 0, 450};
-LevelStruct level_4 = {4, 15, 15, 0, 400};
-LevelStruct level_5 = {5, 15, 15, 1, 400};
-LevelStruct level_6 = {6, 20, 20, 0, 400};
-LevelStruct level_7 = {7, 25, 25, 0, 350};
-LevelStruct level_8 = {8, 30, 30, 0, 350};
-LevelStruct level_9 = {9, 40, 40, 0, 300};
-LevelStruct level_10 = {10, 50, 50, 0, 250};
+LevelStruct level_1 = {1, 5, 0, 0, 2, 0, 2, 5000};
+LevelStruct level_2 = {2, 0, 5, 0, 0, 2, 2, 4000};
+LevelStruct level_3 = {3, 10, 10, 0, 3, 2, 3, 5000};
+LevelStruct level_4 = {4, 10, 10, 0, 5, 2, 4, 3000};
+LevelStruct level_5 = {5, 0, 0, 1, 1, 0, 0, 250};
+LevelStruct level_6 = {6, 15, 15, 0, 8, 3, 4, 5000};
+LevelStruct level_7 = {7, 15, 15, 0, 10, 3, 4, 5000};
+LevelStruct level_8 = {8, 15, 15, 0, 10, 4, 5, 5000};
+LevelStruct level_9 = {9, 15, 15, 0, 10, 5, 5, 5000};
+LevelStruct level_10 = {10, 0, 0, 1, 1, 0, 0, 250};
 LevelStruct* levels[10] = {nullptr};
-LevelStruct baseLevelStruct = {0, 0, 0, 0, 0};
+LevelStruct baseLevelStruct = {0, 0, 0, 0, 0, 0, 0, 0};
 LevelStruct* currLevelStruct = &baseLevelStruct;
 
 void initLevels() {
@@ -314,6 +314,9 @@ void SaveGameToFile(RenderSystem *renderer)
     f << currLevels.currStruct->num_melee << "\n";
     f << currLevels.currStruct->num_ranged << "\n";
     f << currLevels.currStruct->num_boss << "\n";
+    f << currLevels.currStruct->max_active_melee << "\n";
+    f << currLevels.currStruct->max_active_ranged << "\n";
+    f << currLevels.currStruct->wave_size << "\n";
     f << currLevels.currStruct->enemy_spawn_time << "\n";
 
     // Save grid map
@@ -614,6 +617,9 @@ bool LoadGameFromFile(RenderSystem *renderer)
             currLevelStruct->num_melee = LoadInt(f);
             currLevelStruct->num_ranged = LoadInt(f);
             currLevelStruct->num_boss = LoadInt(f);
+            currLevelStruct->max_active_melee = LoadInt(f);
+            currLevelStruct->max_active_ranged = LoadInt(f);
+            currLevelStruct->wave_size = LoadInt(f);
             currLevelStruct->enemy_spawn_time = LoadInt(f);
             currLevels.currStruct = currLevelStruct;
         }
@@ -757,7 +763,7 @@ void GenerateMap(RenderSystem *renderer, int seed)
 
     tiles.emplace_back(Array2D<int>(5, 5, bend), Symmetry::L, 0.5);
     tiles.emplace_back(Array2D<int>(5, 5, corner), Symmetry::L, 0.25);
-    tiles.emplace_back(Array2D<int>(5, 5, corridor), Symmetry::I, 1.0);
+    tiles.emplace_back(Array2D<int>(5, 5, corridor), Symmetry::I, 0.25);
     tiles.emplace_back(Array2D<int>(5, 5, door), Symmetry::T, 3.5);
     tiles.emplace_back(Array2D<int>(5, 5, empty), Symmetry::X, 0.10);
     tiles.emplace_back(Array2D<int>(5, 5, side), Symmetry::T, 1.0);
@@ -1133,7 +1139,7 @@ Entity createCowboyBossEnemy(RenderSystem *renderer, vec2 position)
 
     // Setting enemy health
     Health &bossHealth = registry.healths.emplace(entity);
-    bossHealth.value = 300;
+    bossHealth.value = 1000;
 
     // Initialize the motion
     auto &motion = registry.enemyMotions.emplace(entity);
@@ -1284,7 +1290,7 @@ Entity createNecromancerEnemy(RenderSystem *renderer, vec2 position)
 
     // Setting enemy health
     Health &bossHealth = registry.healths.emplace(entity);
-    bossHealth.value = 300;
+    bossHealth.value = 1500;
 
     // Initialize the motion
     auto &motion = registry.enemyMotions.emplace(entity);

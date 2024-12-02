@@ -95,6 +95,11 @@ private:
     Mix_Chunk *health_stealer_sound;
     Mix_Chunk *level_cleared_sound;
 
+
+    int currNumEnemies = 0;
+    int currNumMelees = 0;
+    int currNumRanged = 0;
+
     // Show Level
     Entity showLevel;
 

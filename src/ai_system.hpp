@@ -37,13 +37,13 @@ private:
     void reset_grid(GridMap &gridMap);
     void interpolate_pathfinding(Motion &enemyMotion, Pathfinder &pathfinder, Motion &playerMotion);
 
-    const float rangedEnemySpeed = 50.f;
-    const float meleeEnemySpeed = 100.f;
+    const float rangedEnemySpeed = 125.f;
+    const float meleeEnemySpeed = 175.f;
 	float const followingConstant = 0.4f;
 	float const distanceToWalls = 150.0f;
     float const aggroDistance = 400.0f;
     const float original_ms = 3000;
-	const float take_aim_ms = 1500;
+	const float take_aim_ms = 500;
 	const float shoot_rate = 500;
     const float obstacleForce = 25.0f;
     const float enemyForce = 20.0f;

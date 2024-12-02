@@ -8,7 +8,7 @@
 // Player component
 struct Player
 {
-    float DEFAULT_SPEED = 200.f;
+    float DEFAULT_SPEED = 250.f;
 };
 
 enum class EnemyState
@@ -45,7 +45,7 @@ struct Health
         else if (bounces_remaining == 1)
             damage = 25;
         else
-            damage = 10;
+            damage = 1;
 
         if (!is_player_projectile)
             damage = 10;
@@ -69,7 +69,7 @@ struct LineOfSight
 struct ReloadTime
 {
     float counter_ms = 3000;
-    float take_aim_ms = 1500;
+    float take_aim_ms = 500;
     float shoot_rate = 500;
 };
 
@@ -317,10 +317,13 @@ extern MouseGestures mouseGestures;
 // Levels
 struct LevelStruct
 {
-    int level_num = 1;
+    int level_num = 0;
     int num_melee = 0;
     int num_ranged = 0;
     int num_boss = 0;
+    int max_active_melee = 0;
+    int max_active_ranged = 0;
+    int wave_size = 0;
     int enemy_spawn_time = 3000;
 };
 
