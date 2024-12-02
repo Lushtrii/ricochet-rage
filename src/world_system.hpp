@@ -95,22 +95,12 @@ private:
     Mix_Chunk *health_stealer_sound;
     Mix_Chunk *level_cleared_sound;
 
-    // level num, num of melee, num of ranged, num of boss, ms between spawns
-    LevelStruct level_1 = {1, 5, 0, 0, 500};
-    LevelStruct level_2 = {2, 0, 5, 0, 450};
-    LevelStruct level_3 = {3, 10, 10, 0, 450};
-    LevelStruct level_4 = {4, 15, 15, 0, 400};
-    LevelStruct level_5 = {5, 15, 15, 1, 400};
-    LevelStruct level_6 = {6, 20, 20, 0, 400};
-    LevelStruct level_7 = {7, 25, 25, 0, 350};
-    LevelStruct level_8 = {8, 30, 30, 0, 350};
-    LevelStruct level_9 = {9, 40, 40, 0, 300};
-    LevelStruct level_10 = {10, 50, 50, 0, 250};
-    LevelStruct *levels[10] = {&level_1, &level_2, &level_3, &level_4, &level_5,
-                               &level_6, &level_7, &level_8, &level_9, &level_10};
-
     // Show Level
     Entity showLevel;
+
+    Entity showProgress;
+    int startingNumEnemies;
+
 
     // C++ random number generator
     std::default_random_engine rng;

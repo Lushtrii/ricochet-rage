@@ -39,6 +39,7 @@ class RenderSystem
         textures_path("projectile.png"),
         textures_path("charged-projectile.png"),
         textures_path("supercharged-projectile.png"),
+        textures_path("enemy-projectile.png"),
         textures_path("wall.png"),
         textures_path("invincibility.png"),
         textures_path("super-bullets.png"),
@@ -53,6 +54,7 @@ class RenderSystem
         textures_path("ui/play-again-button.png"),
         textures_path("ui/continue-button.png"),
         textures_path("health-bar.png"),
+        textures_path("player-health-bar.png"),
         sprite_sheets_path("boss-enemy-sprite-sheet.png"),
         sprite_sheets_path("necromancer-enemy-sprite-sheet.png")
     };

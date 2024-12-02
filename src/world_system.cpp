@@ -10,6 +10,7 @@
 #include <cassert>
 #include <csignal>
 #include <sstream>
+#include <string>
 
 #include "physics_system.hpp"
 
@@ -193,6 +194,7 @@ GLFWwindow *WorldSystem::create_window()
 void WorldSystem::init(RenderSystem *renderer_arg)
 {
     this->renderer = renderer_arg;
+    initLevels();
     // Playing background music indefinitely
     Mix_PlayMusic(background_music, -1);
     fprintf(stderr, "Loaded music\n");
@@ -203,12 +205,17 @@ void WorldSystem::init(RenderSystem *renderer_arg)
     {
         LoadGameFromFile(renderer_arg);
         // Make the code better later
-        currLevels.currStruct = levels[currLevels.current_level];
         init_values();
     }
     else
     {
-        currLevels.currStruct = levels[currLevels.current_level];
+        LevelStruct *levelStruct = levels[currLevels.current_level];
+        currLevelStruct->level_num = levelStruct->level_num;
+        currLevelStruct->num_melee = levelStruct->num_melee;
+        currLevelStruct->num_ranged = levelStruct->num_ranged;
+        currLevelStruct->num_boss = levelStruct->num_boss;
+        currLevelStruct->enemy_spawn_time = levelStruct->enemy_spawn_time;
+        currLevels.currStruct = currLevelStruct;
         restart_game();
     }
 }
@@ -271,6 +278,21 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         Text &showLevelText = registry.texts.get(showLevel);
         showLevelText.text = "Level " + std::to_string(currLevels.current_level + 1);
     }
+
+    // Get current level 
+    LevelStruct* currLevelStruct = currLevels.currStruct;
+    int numActiveEnemies = registry.enemies.size();
+    int numUnspawnedEnemies = currLevelStruct->num_melee + currLevelStruct->num_ranged + currLevelStruct->num_boss;
+    int numEnemiesLeft = numActiveEnemies + numUnspawnedEnemies;
+    std::string numEnemyText = "Enemies remaining: " + std::to_string(numEnemiesLeft);
+    if (!registry.texts.has(showProgress)) {
+        showProgress = createText(renderer, numEnemyText, vec2(w*0.05f, h*0.11f), 2.0f, {1.0, 0.0, 0.0}, false);
+    }
+    else {
+        Text &levelProgressText = registry.texts.get(showProgress);
+        levelProgressText.text = numEnemyText; 
+    }
+
 
     static int frames = 0;
     static double prevTime = glfwGetTime();
@@ -400,10 +422,20 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
             {
                 healthNormalized = health.value / 100.f;
             }
+            if (entity == player) {
             createHealthBar(
                 renderer,
                 {motion.position.x, motion.position.y - abs(motion.scale.y) / 2 - 15.f},
-                {abs(motion.scale.x) * healthNormalized, 8.f});
+                {abs(motion.scale.x) * healthNormalized, 8.f}, true);
+
+            }
+            else {
+                createHealthBar(
+                    renderer,
+                    {motion.position.x, motion.position.y - abs(motion.scale.y) / 2 - 15.f},
+                    {abs(motion.scale.x) * healthNormalized, 8.f}, false);
+
+            }
         }
     }
 
@@ -432,35 +464,35 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
 
     // spawn new enemies
     next_enemy_spawn -= elapsed_ms_since_last_update * current_speed;
-    LevelStruct &curr_level_struct = *currLevels.currStruct;
-    bool enemiesLeft = (curr_level_struct.num_melee + curr_level_struct.num_ranged + curr_level_struct.num_boss) > 0;
+    LevelStruct *curr_level_struct = currLevels.currStruct;
+    bool enemiesLeft = (curr_level_struct->num_melee + curr_level_struct->num_ranged + curr_level_struct->num_boss) > 0;
     if (enemiesLeft && next_enemy_spawn < 0.f)
     {
-        next_enemy_spawn = (curr_level_struct.enemy_spawn_time * 0.5) + uniform_dist(rng) * curr_level_struct.enemy_spawn_time;
+        next_enemy_spawn = (curr_level_struct->enemy_spawn_time * 0.5) + uniform_dist(rng) * curr_level_struct->enemy_spawn_time;
         vec2 spawn_pos = create_spawn_position();
-        std::cout << "NUM: " << curr_level_struct.num_melee << " "
-                  << curr_level_struct.num_ranged << " "
-                  << curr_level_struct.num_boss << " "
+        std::cout << "NUM: " << curr_level_struct->num_melee << " "
+                  << curr_level_struct->num_ranged << " "
+                  << curr_level_struct->num_boss << " "
                   << std::endl;
 
         float rand;
-        if (curr_level_struct.num_melee >= 1 && curr_level_struct.num_ranged >= 1)
+        if (curr_level_struct->num_melee >= 1 && curr_level_struct->num_ranged >= 1)
         {
             rand = uniform_dist(rng) * 2.0f;
             // std::cout << rand << " RAND" << std::endl;
         }
-        else if (curr_level_struct.num_melee >= 1)
+        else if (curr_level_struct->num_melee >= 1)
         {
             rand = 1;
         }
-        else if (curr_level_struct.num_ranged >= 1)
+        else if (curr_level_struct->num_ranged >= 1)
         {
             rand = 2;
         }
 
-        if (curr_level_struct.num_boss >= 1)
+        if (curr_level_struct->num_boss >= 1)
         {
-            if (curr_level_struct.level_num == 5)
+            if (curr_level_struct->level_num == 5)
             {
                 createCowboyBossEnemy(renderer, spawn_pos);
             }
@@ -469,17 +501,17 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
                 createNecromancerEnemy(renderer, spawn_pos);
             }
 
-            curr_level_struct.num_boss--;
+            curr_level_struct->num_boss--;
         }
         else if (rand <= 1)
         {
             createMeleeEnemy(renderer, spawn_pos);
-            curr_level_struct.num_melee--;
+            curr_level_struct->num_melee--;
         }
         else if (rand <= 2)
         {
             createRangedEnemy(renderer, spawn_pos);
-            curr_level_struct.num_ranged--;
+            curr_level_struct->num_ranged--;
         }
     }
 
@@ -516,7 +548,13 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
                 restart_game();
                 return true;
             }
-            currLevels.currStruct = levels[currLevels.current_level];
+            LevelStruct *levelStruct = levels[currLevels.current_level];
+            currLevelStruct->level_num = levelStruct->level_num;
+            currLevelStruct->num_melee = levelStruct->num_melee;
+            currLevelStruct->num_ranged = levelStruct->num_ranged;
+            currLevelStruct->num_boss = levelStruct->num_boss;
+            currLevelStruct->enemy_spawn_time = levelStruct->enemy_spawn_time;
+            currLevels.currStruct = currLevelStruct;
             restart_game();
         return true;
         }
@@ -561,7 +599,13 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
 void WorldSystem::reset_level()
 {
     currLevels.current_level = 0;
-    currLevels.currStruct = levels[0];
+
+    LevelStruct *levelStruct = levels[0];
+    currLevelStruct->level_num = levelStruct->level_num;
+    currLevelStruct->num_melee = levelStruct->num_melee;
+    currLevelStruct->num_ranged = levelStruct->num_ranged;
+    currLevelStruct->num_boss = levelStruct->num_boss;
+    currLevelStruct->enemy_spawn_time = levelStruct->enemy_spawn_time;
 }
 
 void WorldSystem::init_values()
@@ -608,6 +652,11 @@ void WorldSystem::restart_game()
     init_values();
     registry.colors.insert(player, {1, 0.8f, 0.8f});
     update_player_move_dir();
+
+    // Get total number of enemies in level
+    LevelStruct &curr_level_struct = *currLevels.currStruct;
+    startingNumEnemies = curr_level_struct.num_melee + curr_level_struct.num_ranged + curr_level_struct.num_boss;
+
 }
 
 void WorldSystem::projectile_hit_character(Entity laser, Entity character)
@@ -907,6 +956,9 @@ void WorldSystem::handle_collisions(float elapsed_ms)
             if (projectile.bounces_remaining == 0)
             {
                 id = TEXTURE_ASSET_ID::PROJECTILE_SUPER_CHARGED;
+            }
+            if (!projectile.is_player_projectile) {
+                id = TEXTURE_ASSET_ID::PROJECTILE_ENEMY; 
             }
             registry.renderRequests.get(entity).used_texture = id;
         }

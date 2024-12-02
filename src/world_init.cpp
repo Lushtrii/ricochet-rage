@@ -12,7 +12,32 @@
 #include <fstream>
 #include <string>
 #include <unordered_set>
+LevelStruct level_1 = {1, 5, 0, 0, 500};
+LevelStruct level_2 = {2, 0, 5, 0, 450};
+LevelStruct level_3 = {3, 10, 10, 0, 450};
+LevelStruct level_4 = {4, 15, 15, 0, 400};
+LevelStruct level_5 = {5, 15, 15, 1, 400};
+LevelStruct level_6 = {6, 20, 20, 0, 400};
+LevelStruct level_7 = {7, 25, 25, 0, 350};
+LevelStruct level_8 = {8, 30, 30, 0, 350};
+LevelStruct level_9 = {9, 40, 40, 0, 300};
+LevelStruct level_10 = {10, 50, 50, 0, 250};
+LevelStruct* levels[10] = {nullptr};
+LevelStruct baseLevelStruct = {0, 0, 0, 0, 0};
+LevelStruct* currLevelStruct = &baseLevelStruct;
 
+void initLevels() {
+    levels[0] = &level_1;
+    levels[1] = &level_2;
+    levels[2] = &level_3;
+    levels[3] = &level_4;
+    levels[4] = &level_5;
+    levels[5] = &level_6;
+    levels[6] = &level_7;
+    levels[7] = &level_8;
+    levels[8] = &level_9;
+    levels[9] = &level_10;
+}
 void SaveGameToFile(RenderSystem *renderer)
 {
     std::ofstream f("../Save1.data");
@@ -211,6 +236,11 @@ void SaveGameToFile(RenderSystem *renderer)
     f << "currentlevel" << "\n";
     f << currLevels.current_level << "\n";
     f << currLevels.total_level_index << "\n";
+    f << currLevels.currStruct->level_num << "\n";
+    f << currLevels.currStruct->num_melee << "\n";
+    f << currLevels.currStruct->num_ranged << "\n";
+    f << currLevels.currStruct->num_boss << "\n";
+    f << currLevels.currStruct->enemy_spawn_time << "\n";
 
     // Save grid map
     // Assume one grid map
@@ -439,6 +469,12 @@ bool LoadGameFromFile(RenderSystem *renderer)
         {
             currLevels.current_level = LoadInt(f);
             currLevels.total_level_index = LoadInt(f);
+            currLevelStruct->level_num = LoadInt(f);
+            currLevelStruct->num_melee = LoadInt(f);
+            currLevelStruct->num_ranged = LoadInt(f);
+            currLevelStruct->num_boss = LoadInt(f);
+            currLevelStruct->enemy_spawn_time = LoadInt(f);
+            currLevels.currStruct = currLevelStruct;
         }
         else if (line == "necromancer")
         {
@@ -1139,10 +1175,11 @@ Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_p
     /* animation.sprite_height = 32; */
     /* animation.sprite_width = 13; */
     /* animation.num_frames = 1; */
+    TEXTURE_ASSET_ID projectileType = is_player_projectile ? TEXTURE_ASSET_ID::PROJECTILE : TEXTURE_ASSET_ID::PROJECTILE_ENEMY;
 
     registry.renderRequests.insert(
         entity,
-        {TEXTURE_ASSET_ID::PROJECTILE, // TEXTURE_COUNT indicates that no texture is needed
+        {projectileType, // TEXTURE_COUNT indicates that no texture is needed
          EFFECT_ASSET_ID::TEXTURED,
          GEOMETRY_BUFFER_ID::PROJECTILE});
 
@@ -1230,15 +1267,16 @@ Entity createHealthStealerPowerUp(RenderSystem *renderer, vec2 position)
     return entity;
 }
 
-Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 scale)
+Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 scale, bool isPlayer)
 {
     Entity entity = Entity();
 
     Mesh &mesh = renderer->getMesh(GEOMETRY_BUFFER_ID::SPRITE);
     registry.meshPtrs.emplace(entity, &mesh);
-
+    
+    TEXTURE_ASSET_ID healthbarType = isPlayer ? TEXTURE_ASSET_ID::PLAYER_HEALTH_BAR : TEXTURE_ASSET_ID::HEALTH_BAR;
     registry.renderRequests.insert(
-        entity, {TEXTURE_ASSET_ID::HEALTH_BAR,
+        entity, {healthbarType,
                  EFFECT_ASSET_ID::TEXTURED,
                  GEOMETRY_BUFFER_ID::SPRITE});
 

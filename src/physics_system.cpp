@@ -3,7 +3,6 @@
 #include "common.hpp"
 #include "components.hpp"
 #include "tiny_ecs_registry.hpp"
-#include "world_init.hpp"
 #include <cstdlib>
 #include <iostream>
 

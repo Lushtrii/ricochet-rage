@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.hpp"
+#include "components.hpp"
 #include "tiny_ecs.hpp"
 #include "render_system.hpp"
 
@@ -17,6 +18,21 @@ const float PROJECTILE_BB_WIDTH = 0.6f * 75.f;
 
 const float POWERUP_BB_HEIGHT = 100;
 const float POWERUP_BB_WIDTH = 100;
+
+extern LevelStruct* currLevelStruct;
+// level num, num of melee, num of ranged, num of boss, ms between spawns
+extern LevelStruct level_1; 
+extern LevelStruct level_2; 
+extern LevelStruct level_3; 
+extern LevelStruct level_4; 
+extern LevelStruct level_5; 
+extern LevelStruct level_6; 
+extern LevelStruct level_7; 
+extern LevelStruct level_8; 
+extern LevelStruct level_9; 
+extern LevelStruct level_10; 
+extern LevelStruct *levels[10];
+
 
 enum TT // TT = TileType
 {
@@ -44,6 +60,8 @@ struct pair_hash
     }
 };
 
+void initLevels();
+
 void SaveGameToFile(RenderSystem *renderer);
 bool LoadGameFromFile(RenderSystem *renderer);
 bool doesSaveFileExist(RenderSystem *renderer);
@@ -64,7 +82,7 @@ Entity createCowboyBossEnemy(RenderSystem *renderer, vec2 position);
 // the game walls
 Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle = 0);
 
-Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 size);
+Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 size, bool isPlayer);
 
 Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_player_projectile, float speed = 500);
 
