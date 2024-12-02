@@ -270,7 +270,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     glfwGetWindowSize(renderer->getWindow(), &w, &h);
     if (!registry.texts.has(showLevel))
     {
-        showLevel = createText(renderer, "Level " + std::to_string(currLevels.current_level + 1), vec2(w / 2 + w * 0.35f, h * 0.11f), 2.0f, {1.0, 0.0, 0.0}, false);
+        showLevel = createText(renderer, "Level " + std::to_string(currLevels.current_level + 1), vec2(w / 2 + w * 0.36f, h * 0.07f), 2.0f, {1.0, 0.0, 0.0}, false);
     }
     else
     {
@@ -285,7 +285,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     int numEnemiesLeft = numActiveEnemies + numUnspawnedEnemies;
     std::string numEnemyText = "Enemies remaining: " + std::to_string(numEnemiesLeft);
     if (!registry.texts.has(showProgress)) {
-        showProgress = createText(renderer, numEnemyText, vec2(w*0.05f, h*0.11f), 2.0f, {1.0, 0.0, 0.0}, false);
+        showProgress = createText(renderer, numEnemyText, vec2(w*0.015f, h*0.07f), 2.0f, {1.0, 0.0, 0.0}, false);
     }
     else {
         Text &levelProgressText = registry.texts.get(showProgress);
@@ -668,7 +668,7 @@ void WorldSystem::restart_game()
     registry.gridMaps.clear();
     GenerateMap(renderer, uniform_dist(rng) * INT32_MAX);
     // create a new player
-    createPlayer(renderer, {50, window_height_px});
+    createPlayer(renderer, {window_width_px/4, window_height_px});
     init_values();
     registry.colors.insert(player, {1, 0.8f, 0.8f});
     update_player_move_dir();
