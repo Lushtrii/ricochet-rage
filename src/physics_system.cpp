@@ -54,7 +54,7 @@ bool PhysicsSystem::collides(const Motion& motion1, const Motion& motion2)
     float motion2_up = motion2.position.y - abs(motion2.scale.y/2);
     float motion2_down = motion2.position.y + abs(motion2.scale.y/2);
 
-    return motion1_right >  motion2_left && motion2_up < motion1_down && motion1_left < motion2_right && motion1_up < motion2_down;
+    return motion1_right > motion2_left && motion2_up < motion1_down && motion1_left < motion2_right && motion1_up < motion2_down;
 }
 
 void PhysicsSystem::step(float elapsed_ms)
@@ -64,14 +64,18 @@ void PhysicsSystem::step(float elapsed_ms)
 	auto& motion_registry = registry.motions;
 	float step_seconds = elapsed_ms / 1000.f;
 
+    Entity playerEntity = registry.players.entities[0];
+
 	for(uint i = 0; i< motion_registry.size(); i++)
 	{
 		Motion& motion = motion_registry.components[i];
 		Entity entity = motion_registry.entities[i];
+        bool isPlayerEntity = playerEntity == entity;
 
 		motion.last_physic_move = vec2(0,0);
 
-		if (registry.dashes.has(entity)) {
+        // Optimize by assuming player is the only one with dash
+		if (isPlayerEntity) {
 			Dash& dash = registry.dashes.get(entity);
 
 			if (dash.remaining_dash_time > 0) {
@@ -90,34 +94,116 @@ void PhysicsSystem::step(float elapsed_ms)
 		motion.position += motion.last_physic_move;
 	}
 
+    for (Motion& projectileMotion : registry.projectileMotions.components) {
+		projectileMotion.last_physic_move = vec2(0,0);
+		projectileMotion.last_physic_move += projectileMotion.velocity * step_seconds;	
+		projectileMotion.position += projectileMotion.last_physic_move;
+    }
+
+    for (Motion& enemyMotion : registry.enemyMotions.components) {
+		enemyMotion.last_physic_move = vec2(0,0);
+		enemyMotion.last_physic_move += enemyMotion.velocity * step_seconds;	
+		enemyMotion.position += enemyMotion.last_physic_move;
+    }
+
 	// Check for collisions between all moving entities
     ComponentContainer<Motion> &motion_container = registry.motions;
-	for(uint i = 0; i<motion_container.components.size(); i++)
+    Motion& playerMotion = registry.motions.get(registry.players.entities[0]);
+
+    //Wall collisions
+	for(Motion& wallMotion : registry.wallMotions.components)
 	{
-		Motion& motion_i = motion_container.components[i];
-		Entity entity_i = motion_container.entities[i];
+        //Player motion
+        if (collides(playerMotion, wallMotion)) {
+            registry.collisions.emplace_with_duplicates(wallMotion.entity, playerMotion.entity);
+            registry.collisions.emplace_with_duplicates(playerMotion.entity, wallMotion.entity);
 
-		
-		// note starting j at i+1 to compare all (i,j) pairs only once (and to not compare with itself)
-		for(uint j = i+1; j<motion_container.components.size(); j++)
+        }
+
+		for(Motion& projectileMotion : registry.projectileMotions.components)
 		{
-			Motion& motion_j = motion_container.components[j];
-			if (collides(motion_i, motion_j))
+			if (collides(projectileMotion, wallMotion))
 			{
-				if (registry.meshPtrs.has(entity_i))
-				{
-					const std::vector<TexturedVertex> meshVertices = registry.meshPtrs.get(entity_i)->vertices;
-					if (registry.projectiles.has(entity_i) && !doesMeshCollide(motion_i, meshVertices, motion_j)) {
-						continue;
-					}
-				}
+                const std::vector<TexturedVertex> meshVertices = registry.meshPtrs.get(projectileMotion.entity)->vertices;
+                if (!doesMeshCollide(projectileMotion, meshVertices, wallMotion)) {
+                    continue;
+                }
 
-				Entity entity_j = motion_container.entities[j];
 				// Create a collisions event
 				// We are abusing the ECS system a bit in that we potentially insert muliple collisions for the same entity
-				registry.collisions.emplace_with_duplicates(entity_i, entity_j);
-				registry.collisions.emplace_with_duplicates(entity_j, entity_i);
+				registry.collisions.emplace_with_duplicates(projectileMotion.entity, wallMotion.entity);
+				registry.collisions.emplace_with_duplicates(wallMotion.entity, projectileMotion.entity);
+			}
+		}
+
+		for(Motion& enemyMotion : registry.enemyMotions.components)
+		{
+			if (collides(enemyMotion, wallMotion))
+			{
+				// Create a collisions event
+				// We are abusing the ECS system a bit in that we potentially insert muliple collisions for the same entity
+				registry.collisions.emplace_with_duplicates(enemyMotion.entity, wallMotion.entity);
+				registry.collisions.emplace_with_duplicates(wallMotion.entity, enemyMotion.entity);
 			}
 		}
 	}
+
+	for(Motion& enemyMotion : registry.enemyMotions.components)
+	{
+        //Player motion
+        if (collides(enemyMotion, playerMotion)) {
+            registry.collisions.emplace_with_duplicates(enemyMotion.entity, playerMotion.entity);
+            registry.collisions.emplace_with_duplicates(playerMotion.entity, enemyMotion.entity);
+
+        }
+        for (Motion& enemyMotion2 : registry.enemyMotions.components) {
+            if (enemyMotion.entity == enemyMotion2.entity) continue;
+
+            if (collides(enemyMotion, enemyMotion2)) {
+                registry.collisions.emplace_with_duplicates(enemyMotion.entity, enemyMotion2.entity);
+                registry.collisions.emplace_with_duplicates(enemyMotion2.entity, enemyMotion.entity);
+
+            }
+        }
+
+		for(Motion& projectileMotion : registry.projectileMotions.components)
+		{
+			if (collides(projectileMotion, enemyMotion))
+			{
+                const std::vector<TexturedVertex> meshVertices = registry.meshPtrs.get(projectileMotion.entity)->vertices;
+                if (!doesMeshCollide(projectileMotion, meshVertices, enemyMotion)) {
+                    continue;
+                }
+				// Create a collisions event
+				// We are abusing the ECS system a bit in that we potentially insert muliple collisions for the same entity
+				registry.collisions.emplace_with_duplicates(projectileMotion.entity, enemyMotion.entity);
+				registry.collisions.emplace_with_duplicates(enemyMotion.entity, projectileMotion.entity);
+			}
+		}
+	}
+
+    for(Motion& projectileMotion : registry.projectileMotions.components)
+    {
+        if (collides(projectileMotion, playerMotion))
+        {
+            const std::vector<TexturedVertex> meshVertices = registry.meshPtrs.get(projectileMotion.entity)->vertices;
+            if (!doesMeshCollide(projectileMotion, meshVertices, playerMotion)) {
+                continue;
+            }
+
+            // Create a collisions event
+            // We are abusing the ECS system a bit in that we potentially insert muliple collisions for the same entity
+            registry.collisions.emplace_with_duplicates(projectileMotion.entity, playerMotion.entity);
+            registry.collisions.emplace_with_duplicates(playerMotion.entity, projectileMotion.entity);
+        }
+	}
+
+    for (Entity& e: registry.powerUps.entities) {
+        Motion& powerUpMotion = registry.motions.get(e);
+        if (collides(powerUpMotion, playerMotion)) {
+            registry.collisions.emplace_with_duplicates(powerUpMotion.entity, playerMotion.entity);
+            registry.collisions.emplace_with_duplicates(playerMotion.entity, powerUpMotion.entity);
+
+        }
+    }
 }

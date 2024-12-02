@@ -163,6 +163,7 @@ struct Clickable
 // All data relevant to the shape and motion of entities
 struct Motion
 {
+    Entity entity;
     vec2 position = {0, 0};
     float angle = 0;
     vec2 velocity = {0, 0};
@@ -331,27 +332,31 @@ struct CurrLevels
 };
 extern CurrLevels currLevels;
 
-struct GridNode {
+struct GridNode
+{
     vec2 position;
     ivec2 coord;
     vec2 size;
     bool notWalkable;
-    float gCost; 
+    float gCost;
     float hCost;
     float fCost() const { return gCost + hCost; }
-    GridNode* parentNode; 
+    GridNode *parentNode;
 };
 
-struct GridMap {
+struct GridMap
+{
     std::vector<std::vector<GridNode>> gridMap;
+    std::vector<Entity> exposed_walls;
     int mapWidth = window_width_px;
     int mapHeight = window_height_px;
     int matrixWidth = 0;
     int matrixHeight = 0;
 };
 
-struct Pathfinder {
-    std::vector<GridNode*> path;
+struct Pathfinder
+{
+    std::vector<GridNode *> path;
     float refresh_rate = 1000.0f;
     float max_refresh_rate = 1000.0f;
 };

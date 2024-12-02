@@ -72,7 +72,20 @@ void RenderSystem::updateAnimations(float elapsed_ms) {
     
     for (auto entity : registry.animations.entities) {
         Animation& anim = registry.animations.get(entity);
-		Motion& motion = registry.motions.get(entity);
+
+        Motion motion;
+        if (registry.enemyMotions.has(entity)) {
+            motion = registry.enemyMotions.get(entity);
+        }
+        else if (registry.wallMotions.has(entity)) {
+            motion = registry.wallMotions.get(entity);
+        }
+        else if (registry.projectileMotions.has(entity)) {
+            motion = registry.projectileMotions.get(entity);
+        }
+        else {
+            motion = registry.motions.get(entity);
+        }
         if (!anim.is_playing) continue;
 
 		if (
@@ -126,7 +139,19 @@ void RenderSystem::drawTexturedMeshWithAnim(Entity entity, const mat3& projectio
 
 void RenderSystem::drawTexturedMesh(Entity entity, const mat3 &projection)
 {
-	Motion &motion = registry.motions.get(entity);
+    Motion motion;
+    if (registry.enemyMotions.has(entity)) {
+        motion = registry.enemyMotions.get(entity);
+    }
+    else if (registry.wallMotions.has(entity)) {
+        motion = registry.wallMotions.get(entity);
+    }
+    else if (registry.projectileMotions.has(entity)) {
+        motion = registry.projectileMotions.get(entity);
+    }
+    else {
+        motion = registry.motions.get(entity);
+    }
 	Transform transform;
 	transform.translate(motion.position);
 	
@@ -346,7 +371,7 @@ void RenderSystem::draw(float elapsed_ms, bool isPaused)
 
         for (Entity entity : registry.renderRequests.entities)
         {
-            if (!registry.motions.has(entity) || registry.clickables.has(entity) || registry.players.has(entity) || entity == hoverEntity) 
+            if (registry.clickables.has(entity) || registry.players.has(entity) || entity == hoverEntity) 
                 continue;
             // Note, its not very efficient to access elements indirectly via the entity
             // albeit iterating through all Sprites in sequence. A good point to optimize

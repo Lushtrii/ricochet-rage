@@ -10,7 +10,7 @@ public:
 	static bool collides(const Motion& motion1, const Motion& motion2);
 	void step(float elapsed_ms);
 
-    vec2 calculateVertexPos(const Motion& m, const TexturedVertex& tv);
+    vec2 calculateVertexPos(const Motion& motion, const TexturedVertex& tv);
 
     bool doesMeshCollide(const Motion& meshMotion, const std::vector<TexturedVertex>& meshVertices, const Motion& otherMotion);
 
@@ -19,4 +19,5 @@ public:
 	PhysicsSystem()
 	{
 	}
+
 };

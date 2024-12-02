@@ -26,8 +26,8 @@ void AISystem::step(float elapsed_ms)
 		// State for roaming
 		EnemyState& enemyState = registry.enemies.get(enemy).enemyState;
 		if (enemyState == EnemyState::ROAMING) {
-			if (registry.motions.has(enemy)) {
-				Motion& motion = registry.motions.get(enemy);
+			if (registry.enemyMotions.has(enemy)) {
+				Motion& motion = registry.enemyMotions.get(enemy);
 				motion.velocity = vec2((uniform_dist(rng) - 0.5f)* 15.0f, (uniform_dist(rng) - 0.5f) * 15.0f);
 				if (length(playerMotion.position - motion.position) < aggroDistance) {
 					enemyState = EnemyState::PURSUING;
@@ -44,7 +44,7 @@ void AISystem::step(float elapsed_ms)
             } 
 			else if (registry.meleeAttacks.has(enemy))
 			{
-				Motion& enemyMotion = registry.motions.get(enemy);
+				Motion& enemyMotion = registry.enemyMotions.get(enemy);
 				if (length(playerMotion.position - enemyMotion.position) > meleeDistance) {
 					Pathfinder& pathfinder = registry.pathfinders.get(enemy);
 					chase_with_a_star(pathfinder, elapsed_ms, playerMotion, enemyMotion);
@@ -54,10 +54,10 @@ void AISystem::step(float elapsed_ms)
             }
 		// State for avoiding obstacles MAY NOT NEED TO USE
 		} else if (enemyState == EnemyState::AVOIDWALL) {
-			if (registry.motions.has(enemy)) {
-				Motion& enemyMotion = registry.motions.get(enemy);
-				for (Entity &wall: registry.walls.entities) {
-					Motion& wallMotion = registry.motions.get(wall);
+			if (registry.enemyMotions.has(enemy)) {
+				Motion& enemyMotion = registry.enemyMotions.get(enemy);
+				for (Entity &wall: registry.exposedWallMotions.entities) {
+					Motion& wallMotion = registry.exposedWallMotions.get(wall);
 					// If in collision course with the wall, go around it
 					vec2 wallEnemyDelta = enemyMotion.position - wallMotion.position;
 					if (length(abs(wallEnemyDelta)) > distanceToWalls) {
@@ -69,7 +69,7 @@ void AISystem::step(float elapsed_ms)
 		// State for attacking player
 		} else if (enemyState == EnemyState::ATTACK) {
 			if (registry.bosses.has(enemy) && registry.reloadTimes.has(enemy) && registry.meleeAttacks.has(enemy)) {
-				Motion& enemyMotion = registry.motions.get(enemy);
+				Motion& enemyMotion = registry.enemyMotions.get(enemy);
 				if (length(playerMotion.position - enemyMotion.position) < meleeDistance) {
 					MeleeAttack &meleeAttack = registry.meleeAttacks.get(enemy);
 					stop_and_melee(enemy, meleeAttack, elapsed_ms, playerMotion, playerEntity);
@@ -90,7 +90,7 @@ void AISystem::step(float elapsed_ms)
 		} else if (enemyState == EnemyState::TELEPORTING) {
 			if (registry.bosses.has(enemy)) {
 				Teleporter& bossTeleport = registry.teleporters.get(enemy);
-				Motion& enemyMotion = registry.motions.get(enemy);
+				Motion& enemyMotion = registry.enemyMotions.get(enemy);
 				if (!registry.teleporting.has(enemy)) {
 					Teleporting& teleporting = registry.teleporting.emplace(enemy);
 					teleporting.starting_time = 0;
@@ -108,7 +108,7 @@ void AISystem::step(float elapsed_ms)
 				}
             }
 		} else if (enemyState == EnemyState::SPAWN_MINIONS) {
-			Motion &enemyMotion = registry.motions.get(enemy);
+			Motion &enemyMotion = registry.enemyMotions.get(enemy);
 
 			Necromancer& necroComp = registry.necromancers.get(enemy);
 			necroComp.centerPosition = enemyMotion.position;
@@ -132,7 +132,7 @@ void AISystem::step(float elapsed_ms)
 
 	// Deal with teleportation animation with Bezier Curve
 	for (Entity& teleporting: registry.teleporting.entities) {
-		Motion &bossMotion = registry.motions.get(teleporting);
+		Motion &bossMotion = registry.enemyMotions.get(teleporting);
 		Teleporting &teleportingComp = registry.teleporting.get(teleporting);
 		bossMotion.scale = bossMotion.scale * quadratic_bezier(teleportingComp.starting_time, teleportingComp.max_time);
 		teleportingComp.starting_time += elapsed_ms;
@@ -141,8 +141,8 @@ void AISystem::step(float elapsed_ms)
 
 // Prevent collision with obstacles
 bool wall_distance_helper(vec2 &position) {
-	for (Entity &wall: registry.walls.entities) {
-		Motion& wallMotion = registry.motions.get(wall);
+	for (Entity &wall: registry.exposedWallMotions.entities) {
+		Motion& wallMotion = registry.exposedWallMotions.get(wall);
 		if (length(position - wallMotion.position) <  75.f) {
 			return false;
 		}
@@ -173,7 +173,7 @@ void AISystem::teleport_boss(Entity &enemy, Motion &playerMotion, EnemyState &en
 {
     bool is_valid_spawn = false;
     vec2 spawn_pos;
-    Motion &enemyMotion = registry.motions.get(enemy);
+    Motion &enemyMotion = registry.enemyMotions.get(enemy);
 
     while (!is_valid_spawn)
     {
@@ -190,7 +190,7 @@ void AISystem::teleport_boss(Entity &enemy, Motion &playerMotion, EnemyState &en
 
         for (Entity entity : registry.walls.entities)
         {
-            Motion &wall_motion = registry.motions.get(entity);
+            Motion &wall_motion = registry.wallMotions.get(entity);
             if (length(wall_motion.position - spawn_pos) < 100.f)
             {
                 is_valid_spawn = false;
@@ -219,12 +219,14 @@ void AISystem::ranged_enemy_pursue(Entity &enemy, float elapsed_ms, Motion &play
     }
     // context_chase(enemy, playerMotion);
 	Pathfinder &pathfinder = registry.pathfinders.get(enemy);
-	Motion& enemyMotion = registry.motions.get(enemy);
+	Motion& enemyMotion = registry.enemyMotions.get(enemy);
 	// update the path with A* every few seconds
     chase_with_a_star(pathfinder, elapsed_ms, playerMotion, enemyMotion);
 
 
-    if (!line_of_sight_check(enemy, playerMotion) && counter.counter_ms < 0)
+    float FURTHEST_SHOOTING_RANGE = 350.f;
+    float dist = length(playerMotion.position - enemyMotion.position);
+    if (!line_of_sight_check(enemy, playerMotion) && dist < FURTHEST_SHOOTING_RANGE && counter.counter_ms < 0)
     {
         enemyState = EnemyState::ATTACK;
     }
@@ -239,7 +241,7 @@ void AISystem::boss_enemy_pursue(Entity &enemy, float elapsed_ms, Motion &player
         counter.counter_ms -= elapsed_ms;
     }
 
-	Motion& enemyMotion = registry.motions.get(enemy);
+	Motion& enemyMotion = registry.enemyMotions.get(enemy);
 
     // context_chase(enemy, playerMotion);
 	Pathfinder &pathfinder = registry.pathfinders.get(enemy);
@@ -301,10 +303,10 @@ void AISystem::update_path(Motion &playerMotion, Motion &enemyMotion, Pathfinder
 
 // Perform a light of sight check to see if there are any obstacles between the ranged enemy and the player
 bool AISystem::line_of_sight_check(Entity &enemy, Motion &playerMotion) {
-	Motion& enemyMotion = registry.motions.get(enemy);
+	Motion& enemyMotion = registry.enemyMotions.get(enemy);
 	vec2 deltaEnemyPlayer = enemyMotion.position - playerMotion.position;
-	for (Entity &obstacle: registry.walls.entities) {
-		Motion &wallMotion = registry.motions.get(obstacle);
+	for (Entity &obstacle: registry.exposedWallMotions.entities) {
+		Motion &wallMotion = registry.exposedWallMotions.get(obstacle);
 		if (line_box_collision(enemyMotion, wallMotion, deltaEnemyPlayer)) {
 			return true;
 		}
@@ -457,7 +459,7 @@ void AISystem::interpolate_pathfinding(Motion &enemyMotion, Pathfinder &pathfind
 void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 	std::vector<vec2> directions = {vec2(0, 1), vec2(0, -1), vec2(1, 0), vec2(-1, 0), normalize(vec2(-1, 1)), normalize(vec2(1,1)), normalize(vec2(-1,-1)), normalize(vec2(1,-1))};
 
-	Motion &enemyMotion = registry.motions.get(enemy);
+	Motion &enemyMotion = registry.enemyMotions.get(enemy);
     float enemySpeed = 0.f;
     if (registry.meleeAttacks.has(enemy)) {
         enemySpeed = meleeEnemySpeed;
@@ -480,8 +482,8 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 	std::vector<float> dangerVector(interestVector.size());
 
 	float minDistance = std::numeric_limits<float>::max();
-	for (Entity &wall: registry.walls.entities) {
-		Motion& wallMotion = registry.motions.get(wall);
+	for (Entity &wall: registry.exposedWallMotions.entities) {
+		Motion& wallMotion = registry.exposedWallMotions.get(wall);
 		vec2 wallEnemyDelta = enemyMotion.position - wallMotion.position;
 		float distanceToWall = length(wallEnemyDelta);
 		
@@ -499,7 +501,7 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 	// Avoid collisions with other enemies, when too close
 	for (Entity &other: registry.enemies.entities) {
 		if (other != enemy) {
-			Motion &otherMotion = registry.motions.get(other);
+			Motion &otherMotion = registry.enemyMotions.get(other);
 			vec2 enemyEnemyDelta = enemyMotion.position - otherMotion.position;
 			float distanceToEnemy = length(enemyEnemyDelta);
 			if (distanceToEnemy < distanceBetweenEnemies) {
@@ -524,10 +526,10 @@ void AISystem::context_chase(Entity &enemy,  Motion &playerMotion) {
 
 // Stop, winds up, and performs a melee attack on the player
 void AISystem::stop_and_melee(Entity &enemy, MeleeAttack &counter, float elapsed_ms, Motion &playerMotion, Entity &playerEntity) {
-	if (registry.motions.has(enemy)) 
+	if (registry.enemyMotions.has(enemy)) 
 	{
 		counter.windup -= elapsed_ms;
-		Motion& enemyMotion = registry.motions.get(enemy);
+		Motion& enemyMotion = registry.enemyMotions.get(enemy);
 		enemyMotion.velocity = vec2(0.0f, 0.0f);
 
 		bool causeDamage = true;
@@ -564,11 +566,11 @@ void AISystem::stop_and_melee(Entity &enemy, MeleeAttack &counter, float elapsed
 // Stops and shoots at the enemy at a certain rate
 void AISystem::stop_and_shoot(Entity &enemy, ReloadTime &counter, float elapsed_ms, Motion &playerMotion, bool boss)
 {
-    if (registry.motions.has(enemy))
+    if (registry.enemyMotions.has(enemy))
     {
         counter.take_aim_ms -= elapsed_ms;
 		counter.shoot_rate -= elapsed_ms;
-        Motion &enemyMotion = registry.motions.get(enemy);
+        Motion &enemyMotion = registry.enemyMotions.get(enemy);
         enemyMotion.velocity = vec2(0.0f, 0.0f);
 
 		if (counter.shoot_rate < 0) {
@@ -628,9 +630,9 @@ void AISystem::simple_chase(float elapsed_ms, Motion &playersMotion)
 // DEPRECATED: Extremely simple chase that goes to the players direction
 void AISystem::simple_chase_enemy(Entity &enemy, Motion &playersMotion)
 {
-	if (registry.motions.has(enemy))
+	if (registry.enemyMotions.has(enemy))
 	{
-		Motion &enemyMotion = registry.motions.get(enemy);
+		Motion &enemyMotion = registry.enemyMotions.get(enemy);
         float enemySpeed = 0.f;
         if (registry.meleeAttacks.has(enemy)) {
             enemySpeed = meleeEnemySpeed;
@@ -639,8 +641,8 @@ void AISystem::simple_chase_enemy(Entity &enemy, Motion &playersMotion)
             enemySpeed = rangedEnemySpeed;
         }
 
-		for (Entity &wall: registry.walls.entities) {
-			Motion& wallMotion = registry.motions.get(wall);
+		for (Entity &wall: registry.exposedWallMotions.entities) {
+			Motion& wallMotion = registry.exposedWallMotions.get(wall);
 			vec2 wallEnemyDelta = enemyMotion.position - wallMotion.position;
 			// Go directly at the player
 			vec2 angleVector = -normalize(enemyMotion.position - playersMotion.position + followingConstant * playersMotion.velocity);

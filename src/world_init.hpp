@@ -4,6 +4,7 @@
 #include "components.hpp"
 #include "tiny_ecs.hpp"
 #include "render_system.hpp"
+#include <fstream>
 
 // These are hardcoded to the dimensions of the entity texture
 // BB = bounding box
@@ -63,12 +64,13 @@ struct pair_hash
 void initLevels();
 
 void SaveGameToFile(RenderSystem *renderer);
+void writePart(std::ofstream &f, ComponentContainer<Motion> *container);
 bool LoadGameFromFile(RenderSystem *renderer);
 bool doesSaveFileExist(RenderSystem *renderer);
 
 void NextRoom(RenderSystem *renderer, int seed);
 void GenerateMap(RenderSystem *renderer, int seed);
-void createTile(RenderSystem *renderer, vec2 pos, vec2 size, TT type);
+Entity createTile(RenderSystem *renderer, vec2 pos, vec2 size, TT type);
 void createGridNode(std::vector<std::vector<GridNode>> &gridMap, vec2 pos, vec2 size, int value);
 // the player
 Entity createPlayer(RenderSystem *renderer, vec2 pos);

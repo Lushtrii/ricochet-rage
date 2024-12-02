@@ -2,6 +2,7 @@
 #include "common.hpp"
 #include "components.hpp"
 #include "render_system.hpp"
+#include "tiny_ecs.hpp"
 #include "tiny_ecs_registry.hpp"
 #include "world_system.hpp"
 #include "wfc/tiling_wfc.hpp"
@@ -38,21 +39,80 @@ void initLevels() {
     levels[8] = &level_9;
     levels[9] = &level_10;
 }
-void SaveGameToFile(RenderSystem *renderer)
+
+void writePart(RenderSystem *renderer, std::ofstream &f, ComponentContainer<Motion> *container)
 {
-    std::ofstream f("../Save1.data");
-
-    // Remove all health bars so they do not re-appear when reloaded
-    while (registry.healthBars.entities.size() > 0)
-        registry.remove_all_components_of(registry.healthBars.entities.back());
-
-    for (Entity e : registry.motions.entities)
+    for (Entity e : container->entities)
     {
         f << "entity" << "\n";
         if (registry.motions.has(e))
         {
             Motion &motion = registry.motions.get(e);
             f << "motion" << "\n";
+            f << motion.angle << "\n";
+            f << motion.last_move_direction.x << "\n"
+              << motion.last_move_direction.y << "\n";
+            f << motion.last_physic_move.x << "\n"
+              << motion.last_physic_move.y << "\n";
+            f << motion.position.x << "\n"
+              << motion.position.y << "\n";
+            f << motion.scale.x << "\n"
+              << motion.scale.y << "\n";
+            f << motion.velocity.x << "\n"
+              << motion.velocity.y << "\n";
+        }
+        if (registry.enemyMotions.has(e))
+        {
+            Motion &motion = registry.enemyMotions.get(e);
+            f << "enemyMotion" << "\n";
+            f << motion.angle << "\n";
+            f << motion.last_move_direction.x << "\n"
+              << motion.last_move_direction.y << "\n";
+            f << motion.last_physic_move.x << "\n"
+              << motion.last_physic_move.y << "\n";
+            f << motion.position.x << "\n"
+              << motion.position.y << "\n";
+            f << motion.scale.x << "\n"
+              << motion.scale.y << "\n";
+            f << motion.velocity.x << "\n"
+              << motion.velocity.y << "\n";
+        }
+        if (registry.wallMotions.has(e))
+        {
+            Motion &motion = registry.wallMotions.get(e);
+            f << "wallMotion" << "\n";
+            f << motion.angle << "\n";
+            f << motion.last_move_direction.x << "\n"
+              << motion.last_move_direction.y << "\n";
+            f << motion.last_physic_move.x << "\n"
+              << motion.last_physic_move.y << "\n";
+            f << motion.position.x << "\n"
+              << motion.position.y << "\n";
+            f << motion.scale.x << "\n"
+              << motion.scale.y << "\n";
+            f << motion.velocity.x << "\n"
+              << motion.velocity.y << "\n";
+        }
+        if (registry.projectileMotions.has(e))
+        {
+            Motion &motion = registry.projectileMotions.get(e);
+            f << "projectileMotion" << "\n";
+            f << motion.angle << "\n";
+            f << motion.last_move_direction.x << "\n"
+              << motion.last_move_direction.y << "\n";
+            f << motion.last_physic_move.x << "\n"
+              << motion.last_physic_move.y << "\n";
+            f << motion.position.x << "\n"
+              << motion.position.y << "\n";
+            f << motion.scale.x << "\n"
+              << motion.scale.y << "\n";
+            f << motion.velocity.x << "\n"
+              << motion.velocity.y << "\n";
+        }
+        if (registry.exposedWallMotions.has(e))
+        {
+            Motion &motion = registry.exposedWallMotions.get(e);
+            f << "exposedWallMotion" << "\n";
             f << motion.angle << "\n";
             f << motion.last_move_direction.x << "\n"
               << motion.last_move_direction.y << "\n";
@@ -219,7 +279,7 @@ void SaveGameToFile(RenderSystem *renderer)
         }
         if (registry.pathfinders.has(e))
         {
-            Pathfinder& pathfinder = registry.pathfinders.get(e);
+            Pathfinder &pathfinder = registry.pathfinders.get(e);
             f << "pathfinder" << "\n";
             // Just let it find the path again
             f << pathfinder.refresh_rate << "\n";
@@ -232,6 +292,20 @@ void SaveGameToFile(RenderSystem *renderer)
             f << l.timer << "\n";
         }
     }
+}
+
+void SaveGameToFile(RenderSystem *renderer)
+{
+    std::ofstream f("../Save1.data");
+
+    // Remove all health bars so they do not re-appear when reloaded
+    while (registry.healthBars.entities.size() > 0)
+        registry.remove_all_components_of(registry.healthBars.entities.back());
+
+    writePart(renderer, f, &registry.motions);
+    writePart(renderer, f, &registry.wallMotions);
+    writePart(renderer, f, &registry.projectileMotions);
+    writePart(renderer, f, &registry.enemyMotions);
     // Save current level
     f << "currentlevel" << "\n";
     f << currLevels.current_level << "\n";
@@ -244,29 +318,31 @@ void SaveGameToFile(RenderSystem *renderer)
 
     // Save grid map
     // Assume one grid map
-    if (registry.gridMaps.size() > 0) {
-        GridMap& gm = registry.gridMaps.get(registry.gridMaps.entities[0]);
+    if (registry.gridMaps.size() > 0)
+    {
+        GridMap &gm = registry.gridMaps.get(registry.gridMaps.entities[0]);
         f << "gridMap" << "\n";
         f << gm.mapWidth << "\n";
         f << gm.mapHeight << "\n";
         f << gm.matrixWidth << "\n";
         f << gm.matrixHeight << "\n";
-        for (int j = 0; j < gm.matrixHeight; j++) {
-            for (int i = 0; i < gm.matrixWidth; i++) {
+        for (int j = 0; j < gm.matrixHeight; j++)
+        {
+            for (int i = 0; i < gm.matrixWidth; i++)
+            {
                 auto &gridNode = gm.gridMap[j][i];
                 f << "gridNode" << "\n";
                 f << gridNode.position.x << "\n"
-                    << gridNode.position.y << "\n"; 
+                  << gridNode.position.y << "\n";
                 f << gridNode.coord.x << "\n"
-                    << gridNode.coord.y << "\n"; 
+                  << gridNode.coord.y << "\n";
                 f << gridNode.size.x << "\n"
-                    << gridNode.size.y << "\n";
+                  << gridNode.size.y << "\n";
                 f << gridNode.notWalkable << "\n";
                 // Other values are dynamic
             }
         }
     }
-
 
     f.close();
 }
@@ -327,6 +403,71 @@ bool LoadGameFromFile(RenderSystem *renderer)
         {
             Motion &motion = registry.motions.emplace(e);
             motion.angle = LoadFloat(f);
+            motion.entity = e;
+            motion.last_move_direction.x = LoadFloat(f);
+            motion.last_move_direction.y = LoadFloat(f);
+            motion.last_physic_move.x = LoadFloat(f);
+            motion.last_physic_move.y = LoadFloat(f);
+            motion.position.x = LoadFloat(f);
+            motion.position.y = LoadFloat(f);
+            motion.scale.x = LoadFloat(f);
+            motion.scale.y = LoadFloat(f);
+            motion.velocity.x = LoadFloat(f);
+            motion.velocity.y = LoadFloat(f);
+        }
+        else if (line == "wallMotion")
+        {
+            Motion &motion = registry.wallMotions.emplace(e);
+            motion.angle = LoadFloat(f);
+            motion.entity = e;
+            motion.last_move_direction.x = LoadFloat(f);
+            motion.last_move_direction.y = LoadFloat(f);
+            motion.last_physic_move.x = LoadFloat(f);
+            motion.last_physic_move.y = LoadFloat(f);
+            motion.position.x = LoadFloat(f);
+            motion.position.y = LoadFloat(f);
+            motion.scale.x = LoadFloat(f);
+            motion.scale.y = LoadFloat(f);
+            motion.velocity.x = LoadFloat(f);
+            motion.velocity.y = LoadFloat(f);
+        }
+        else if (line == "exposedWallMotion")
+        {
+            Motion &motion = registry.exposedWallMotions.emplace(e);
+            motion.angle = LoadFloat(f);
+            motion.entity = e;
+            motion.last_move_direction.x = LoadFloat(f);
+            motion.last_move_direction.y = LoadFloat(f);
+            motion.last_physic_move.x = LoadFloat(f);
+            motion.last_physic_move.y = LoadFloat(f);
+            motion.position.x = LoadFloat(f);
+            motion.position.y = LoadFloat(f);
+            motion.scale.x = LoadFloat(f);
+            motion.scale.y = LoadFloat(f);
+            motion.velocity.x = LoadFloat(f);
+            motion.velocity.y = LoadFloat(f);
+        }
+        else if (line == "enemyMotion")
+        {
+            Motion &motion = registry.enemyMotions.emplace(e);
+            motion.angle = LoadFloat(f);
+            motion.entity = e;
+            motion.last_move_direction.x = LoadFloat(f);
+            motion.last_move_direction.y = LoadFloat(f);
+            motion.last_physic_move.x = LoadFloat(f);
+            motion.last_physic_move.y = LoadFloat(f);
+            motion.position.x = LoadFloat(f);
+            motion.position.y = LoadFloat(f);
+            motion.scale.x = LoadFloat(f);
+            motion.scale.y = LoadFloat(f);
+            motion.velocity.x = LoadFloat(f);
+            motion.velocity.y = LoadFloat(f);
+        }
+        else if (line == "projectileMotion")
+        {
+            Motion &motion = registry.projectileMotions.emplace(e);
+            motion.angle = LoadFloat(f);
+            motion.entity = e;
             motion.last_move_direction.x = LoadFloat(f);
             motion.last_move_direction.y = LoadFloat(f);
             motion.last_physic_move.x = LoadFloat(f);
@@ -485,14 +626,14 @@ bool LoadGameFromFile(RenderSystem *renderer)
         }
         else if (line == "pathfinder")
         {
-            Pathfinder& p = registry.pathfinders.emplace(e);
+            Pathfinder &p = registry.pathfinders.emplace(e);
             p.refresh_rate = LoadFloat(f);
             p.max_refresh_rate = LoadFloat(f);
         }
         else if (line == "gridMap")
         {
             e = Entity();
-            GridMap& gm = registry.gridMaps.emplace(e);
+            GridMap &gm = registry.gridMaps.emplace(e);
             gm.mapWidth = LoadInt(f);
             gm.mapHeight = LoadInt(f);
             gm.matrixWidth = LoadInt(f);
@@ -500,13 +641,17 @@ bool LoadGameFromFile(RenderSystem *renderer)
             // Load the gridNode
             std::vector<std::vector<GridNode>> gridMap;
             gridMap.resize(gm.matrixHeight);
-            for (auto& row : gridMap) {
+            for (auto &row : gridMap)
+            {
                 row.resize(gm.matrixWidth);
             }
-            for (int j = 0; j < gm.matrixHeight; j++) {
-                for (int i = 0; i < gm.matrixWidth; i++) {
+            for (int j = 0; j < gm.matrixHeight; j++)
+            {
+                for (int i = 0; i < gm.matrixWidth; i++)
+                {
                     getline(f, line);
-                    if (line == "gridNode") {
+                    if (line == "gridNode")
+                    {
                         GridNode gridNode;
                         gridNode.position.x = LoadFloat(f);
                         gridNode.position.y = LoadFloat(f);
@@ -676,6 +821,7 @@ void GenerateMap(RenderSystem *renderer, int seed)
     int tileLength = 5;
     bool periodic_output = true;
 
+    std::unordered_set<std::pair<int, int>, pair_hash> exposed_walls;
     Array2D<int> result(1, 1);
     bool success = false;
     while (!success)
@@ -706,21 +852,52 @@ void GenerateMap(RenderSystem *renderer, int seed)
                 int y = current.first;
                 int x = current.second;
 
-                if (x > 0 && result.get(y, x - 1) == 0 && visited.count({y, x - 1}) == 0)
+                if (x > 0 && visited.count({y, x - 1}) == 0)
                 {
-                    Q.push_back({y, x - 1});
+                    if (result.get(y, x - 1) == 0)
+                    {
+                        Q.push_back({y, x - 1});
+                    }
+                    else
+                    {
+                        exposed_walls.insert({y, x - 1});
+                    }
                 }
-                if (x < result.width - 1 && result.get(y, x + 1) == 0 && visited.count({y, x + 1}) == 0)
+
+                if (x < result.width - 1 && visited.count({y, x + 1}) == 0)
                 {
-                    Q.push_back({y, x + 1});
+                    if (result.get(y, x + 1) == 0)
+                    {
+                        Q.push_back({y, x + 1});
+                    }
+                    else
+                    {
+                        exposed_walls.insert({y, x + 1});
+                    }
                 }
-                if (y > 0 && result.get(y - 1, x) == 0 && visited.count({y - 1, x}) == 0)
+
+                if (y > 0 && visited.count({y - 1, x}) == 0)
                 {
-                    Q.push_back({y - 1, x});
+                    if (result.get(y - 1, x) == 0)
+                    {
+                        Q.push_back({y - 1, x});
+                    }
+                    else
+                    {
+                        exposed_walls.insert({y - 1, x});
+                    }
                 }
-                if (y < result.height - 1 && result.get(y + 1, x) == 0 && visited.count({y + 1, x}) == 0)
+
+                if (y < result.height - 1 && visited.count({y + 1, x}) == 0)
                 {
-                    Q.push_back({y + 1, x});
+                    if (result.get(y + 1, x) == 0)
+                    {
+                        Q.push_back({y + 1, x});
+                    }
+                    else
+                    {
+                        exposed_walls.insert({y + 1, x});
+                    }
                 }
             }
 
@@ -744,17 +921,18 @@ void GenerateMap(RenderSystem *renderer, int seed)
     }
 
     vec2 tileSize = vec2(50, 50);
-    
+
     // Create grid map
     auto gridMapEntity = Entity();
     GridMap &gridMapComp = registry.gridMaps.emplace(gridMapEntity);
     auto &gridMapVec = gridMapComp.gridMap;
-    gridMapComp.mapWidth = (int) floor(result.width * tileSize.x);
-    gridMapComp.mapHeight = (int) floor(result.height * tileSize.y);
+    gridMapComp.mapWidth = (int)floor(result.width * tileSize.x);
+    gridMapComp.mapHeight = (int)floor(result.height * tileSize.y);
     gridMapComp.matrixWidth = result.width;
     gridMapComp.matrixHeight = result.height;
     gridMapVec.resize(result.height);
-    for (auto& row : gridMapVec) {
+    for (auto &row : gridMapVec)
+    {
         row.resize(result.width);
     }
     for (int x = 0; x < result.width; x++)
@@ -765,27 +943,49 @@ void GenerateMap(RenderSystem *renderer, int seed)
             createGridNode(gridMapVec, vec2(x, y), tileSize, value);
 
             // Outer edge of room or if wfc randomly generates selected tile as wall, create tile)
-            if (value == 1 || x == 0 || y == 0 || x == result.width-1 || y == result.height-1)
-                createTile(renderer, vec2(x, y), tileSize, (TT)value);
+            if (value == 1 || x == 0 || y == 0 || x == result.width - 1 || y == result.height - 1)
+            {
+                Entity tile = createTile(renderer, vec2(x, y), tileSize, (TT)value);
+                // add all exposed walls to vector for faster collision detection computatiojns later
+                if (exposed_walls.count({y, x}) > 0 || x == 0 || y == 0 || x == result.width - 1 || y == result.height - 1)
+                {
+                    gridMapComp.exposed_walls.push_back(tile);
+                }
+            }
         }
     }
+
+    for (Entity e : gridMapComp.exposed_walls) {
+        Motion& wallMotion = registry.wallMotions.get(e);
+        Motion& exposedWallMotion = registry.exposedWallMotions.emplace(e);
+        exposedWallMotion.entity = e;
+        exposedWallMotion.position = wallMotion.position;
+        exposedWallMotion.angle = wallMotion.angle;
+        exposedWallMotion.scale = wallMotion.scale;
+        exposedWallMotion.velocity = wallMotion.velocity;
+        exposedWallMotion.last_physic_move = wallMotion.last_physic_move;
+        exposedWallMotion.last_move_direction = wallMotion.last_move_direction;
+    }
+
+
+
+    // std::cout << "EXPOSED WALLS:" << gridMapComp.exposed_walls.size() << std::endl;
 }
 
-void createTile(RenderSystem *renderer, vec2 pos, vec2 size, TT type)
+Entity createTile(RenderSystem *renderer, vec2 pos, vec2 size, TT type)
 {
-    createWall(renderer, (pos * size.x) + (size * 0.5f), size);
+    return createWall(renderer, (pos * size.x) + (size * 0.5f), size);
 }
 
 void createGridNode(std::vector<std::vector<GridNode>> &gridMap, vec2 pos, vec2 size, int value)
 {
     GridNode newGridNode = {(pos * size.x) + (size * 0.5f),
-        pos,
-        size,
-        static_cast<bool>(value),
-        1e9,
-        0.0f,
-        nullptr
-        };
+                            pos,
+                            size,
+                            static_cast<bool>(value),
+                            1e9,
+                            0.0f,
+                            nullptr};
     gridMap[pos.y][pos.x] = newGridNode;
 }
 
@@ -802,6 +1002,7 @@ Entity createPlayer(RenderSystem *renderer, vec2 pos)
 
     // Setting initial motion values
     Motion &motion = registry.motions.emplace(entity);
+    motion.entity = entity;
     motion.position = pos;
     motion.angle = 0.f;
     motion.velocity = {0.f, 0.f};
@@ -839,7 +1040,9 @@ Entity createMeleeEnemy(RenderSystem *renderer, vec2 position)
     registry.healths.emplace(entity);
 
     // Initialize the motion
-    auto &motion = registry.motions.emplace(entity);
+    auto &motion = registry.enemyMotions.emplace(entity);
+    motion.entity = entity;
+    /* enemyMotion.entity = entity; */
     motion.angle = 0.f;
     motion.velocity = {0.f, 0.f};
     motion.position = position;
@@ -848,7 +1051,7 @@ Entity createMeleeEnemy(RenderSystem *renderer, vec2 position)
     // Setting initial values, scale is negative to make it face the opposite way
     motion.scale = vec2({multiplier * ENEMY_BB_WIDTH, multiplier * ENEMY_BB_HEIGHT});
 
-    // create an empty enemies component
+    // create an empty enemies components
     registry.enemies.emplace(entity);
     registry.meleeAttacks.emplace(entity);
     Animation &animation = registry.animations.emplace(entity);
@@ -884,7 +1087,9 @@ Entity createRangedEnemy(RenderSystem *renderer, vec2 position)
     registry.healths.emplace(entity);
 
     // Initialize the motion
-    auto &motion = registry.motions.emplace(entity);
+    auto &motion = registry.enemyMotions.emplace(entity);
+    motion.entity = entity;
+    /* enemyMotion.entity = entity; */
     motion.angle = 0.f;
     motion.velocity = {0.f, 0.f};
     motion.position = position;
@@ -931,7 +1136,8 @@ Entity createCowboyBossEnemy(RenderSystem *renderer, vec2 position)
     bossHealth.value = 300;
 
     // Initialize the motion
-    auto &motion = registry.motions.emplace(entity);
+    auto &motion = registry.enemyMotions.emplace(entity);
+    motion.entity = entity;
     motion.angle = 0.f;
     motion.velocity = {0.f, 0.f};
     motion.position = position;
@@ -986,7 +1192,8 @@ Entity createMeleeMinion(RenderSystem *renderer, vec2 position)
     registry.healths.insert(entity, {25});
 
     // Initialize the motion
-    auto &motion = registry.motions.emplace(entity);
+    auto &motion = registry.enemyMotions.emplace(entity);
+    motion.entity = entity;
     motion.angle = 0.f;
     motion.velocity = {0.f, 0.f};
     motion.position = position;
@@ -1031,7 +1238,9 @@ Entity createRangedMinion(RenderSystem *renderer, vec2 position)
     registry.healths.insert(entity, {25});
 
     // Initialize the motion
-    auto &motion = registry.motions.emplace(entity);
+    auto &motion = registry.enemyMotions.emplace(entity);
+    motion.entity = entity;
+    /* enemyMotion.entity = entity; */
     motion.angle = 0.f;
     motion.velocity = {0.f, 0.f};
     motion.position = position;
@@ -1078,7 +1287,8 @@ Entity createNecromancerEnemy(RenderSystem *renderer, vec2 position)
     bossHealth.value = 300;
 
     // Initialize the motion
-    auto &motion = registry.motions.emplace(entity);
+    auto &motion = registry.enemyMotions.emplace(entity);
+    motion.entity = entity;
     motion.angle = 0.f;
     motion.velocity = {0.f, 0.f};
     motion.position = position;
@@ -1130,7 +1340,8 @@ Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle)
     registry.meshPtrs.emplace(entity, &mesh);
 
     // Initialize the wall
-    Motion &motion = registry.motions.emplace(entity);
+    Motion &motion = registry.wallMotions.emplace(entity);
+    motion.entity = entity;
     motion.position = position;
     motion.angle = angle * (M_PI / 180.0f);
     motion.scale = size;
@@ -1140,6 +1351,7 @@ Entity createWall(RenderSystem *renderer, vec2 position, vec2 size, float angle)
     animation.sprite_height = 50;
     animation.sprite_width = 50;
     animation.num_frames = 1;
+
     registry.renderRequests.insert(entity, {TEXTURE_ASSET_ID::WALL, // wall.png in render_system.hpp/components.hpp
                                             EFFECT_ASSET_ID::TEXTURED,
                                             GEOMETRY_BUFFER_ID::SPRITE});
@@ -1159,7 +1371,8 @@ Entity createProjectile(RenderSystem *renderer, vec2 pos, float angle, bool is_p
     registry.meshPtrs.emplace(entity, &mesh);
 
     // Setting initial motion values
-    Motion &motion = registry.motions.emplace(entity);
+    Motion &motion = registry.projectileMotions.emplace(entity);
+    motion.entity = entity;
     motion.position = pos;
     motion.angle = angle + M_PI / 2;
 
@@ -1196,6 +1409,7 @@ Entity createInvincibilityPowerUp(RenderSystem *renderer, vec2 position)
     registry.meshPtrs.emplace(entity, &mesh);
 
     Motion &motion = registry.motions.emplace(entity);
+    motion.entity = entity;
     motion.position = position;
     motion.scale = vec2(POWERUP_BB_WIDTH, POWERUP_BB_HEIGHT) * scaleMultiplier;
 
@@ -1223,6 +1437,7 @@ Entity createSuperBulletsPowerUp(RenderSystem *renderer, vec2 position)
     registry.meshPtrs.emplace(entity, &mesh);
 
     Motion &motion = registry.motions.emplace(entity);
+    motion.entity = entity;
     motion.position = position;
     motion.scale = vec2(POWERUP_BB_WIDTH, POWERUP_BB_HEIGHT) * scaleMultiplier;
 
@@ -1250,6 +1465,7 @@ Entity createHealthStealerPowerUp(RenderSystem *renderer, vec2 position)
     registry.meshPtrs.emplace(entity, &mesh);
 
     Motion &motion = registry.motions.emplace(entity);
+    motion.entity = entity;
     motion.position = position;
     motion.scale = vec2(POWERUP_BB_WIDTH, POWERUP_BB_HEIGHT) * scaleMultiplier;
 
@@ -1281,6 +1497,7 @@ Entity createHealthBar(RenderSystem *renderer, vec2 position, vec2 scale, bool i
                  GEOMETRY_BUFFER_ID::SPRITE});
 
     Motion &motion = registry.motions.emplace(entity);
+    motion.entity = entity;
     motion.position = position;
     motion.scale = scale;
 

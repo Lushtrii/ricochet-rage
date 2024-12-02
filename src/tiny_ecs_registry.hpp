@@ -46,6 +46,11 @@ public:
     ComponentContainer<Pathfinder> pathfinders;
     ComponentContainer<LightUp> lightUps;
 
+    ComponentContainer<Motion> wallMotions;
+    ComponentContainer<Motion> enemyMotions;
+    ComponentContainer<Motion> projectileMotions;
+    ComponentContainer<Motion> exposedWallMotions;
+
     // constructor that adds all containers for looping over them
     // IMPORTANT: Don't forget to add any newly added containers!
     ECSRegistry()
@@ -78,9 +83,13 @@ public:
         registry_list.push_back(&teleporting);
         registry_list.push_back(&lights);
         registry_list.push_back(&necromancers);
+        registry_list.push_back(&wallMotions);
+        registry_list.push_back(&enemyMotions);
+        registry_list.push_back(&projectileMotions);
         registry_list.push_back(&gridMaps);
         registry_list.push_back(&pathfinders);
         registry_list.push_back(&lightUps);
+        registry_list.push_back(&exposedWallMotions);
     }
 
     void clear_all_components()

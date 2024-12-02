@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vector>
 #include <unordered_map>
+#include <iostream>
 #include <set>
 #include <functional>
 #include <typeindex>
@@ -14,6 +15,8 @@ class Entity
 	unsigned int id;
 	static unsigned int id_count; // starts from 1, entit 0 is the default initialization
 public:
+    Entity(unsigned int id) : id(id) {}
+
 	Entity()
 	{
 		id = id_count++;
@@ -68,6 +71,16 @@ public:
 		return components.back();
 	};
 
+	// Inserting a component c associated to entity e
+	inline void insertIntoClone(Entity e, Component c, bool check_for_duplicates = true)
+	{
+		// Usually, every entity should only have one instance of each component type
+		assert(!(check_for_duplicates && has(e)) && "Entity already contained in ECS registry");
+
+		map_entity_componentID[e] = (unsigned int)components.size();
+		components.push_back(std::move(c)); // the move enforces move instead of copy constructor
+		entities.push_back(e);
+	};
 	// The emplace function takes the the provided arguments Args, creates a new object of type Component, and inserts it into the ECS system
 	template<typename... Args>
 	Component& emplace(Entity e, Args &&... args) {

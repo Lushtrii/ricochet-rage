@@ -249,9 +249,8 @@ vec2 WorldSystem::create_spawn_position()
             is_valid_spawn = false;
         }
 
-        for (Entity entity : registry.walls.entities)
+        for (Motion &wall_motion : registry.wallMotions.components)
         {
-            Motion &wall_motion = registry.motions.get(entity);
             if (length(wall_motion.position - spawn_pos) < 100.f)
             {
                 is_valid_spawn = false;
@@ -403,18 +402,26 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
         health_check(health, entity);
     }
 
-    // Add health bars
-    for (int i = (int)motions_registry.components.size() - 1; i >= 0; --i)
-    {
-        Motion &motion = motions_registry.components[i];
-        Entity entity = motions_registry.entities[i];
+    // Create player healthbar
+    Motion &playerMotion = registry.motions.get(player);
+    Health &health = registry.healths.get(player);
 
-        if (registry.healths.has(entity))
+    float healthNormalized = health.value / 100.f;
+
+    createHealthBar(
+        renderer,
+        {playerMotion.position.x, playerMotion.position.y - abs(playerMotion.scale.y) / 2 - 15.f},
+        {abs(playerMotion.scale.x) * healthNormalized, 8.f}, true);
+
+    // Create enemy healthbars
+    for (Motion &m : registry.enemyMotions.components)
+    {
+        if (registry.healths.has(m.entity))
         {
-            Health &health = registry.healths.get(entity);
+            Health &health = registry.healths.get(m.entity);
 
             float healthNormalized;
-            if (registry.bosses.has(entity))
+            if (registry.bosses.has(m.entity))
             {
                 healthNormalized = health.value / 300.f;
             }
@@ -422,18 +429,18 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
             {
                 healthNormalized = health.value / 100.f;
             }
-            if (entity == player) {
+            if (m.entity == player) {
             createHealthBar(
                 renderer,
-                {motion.position.x, motion.position.y - abs(motion.scale.y) / 2 - 15.f},
-                {abs(motion.scale.x) * healthNormalized, 8.f}, true);
+                {m.position.x, m.position.y - abs(m.scale.y) / 2 - 15.f},
+                {abs(m.scale.x) * healthNormalized, 8.f}, true);
 
             }
             else {
                 createHealthBar(
                     renderer,
-                    {motion.position.x, motion.position.y - abs(motion.scale.y) / 2 - 15.f},
-                    {abs(motion.scale.x) * healthNormalized, 8.f}, false);
+                    {m.position.x, m.position.y - abs(m.scale.y) / 2 - 15.f},
+                    {abs(m.scale.x) * healthNormalized, 8.f}, false);
 
             }
         }
@@ -519,7 +526,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     if (!enemiesLeft && (int)registry.enemies.entities.size() == 0 && (int)registry.lightUps.entities.size() == 0)
     {
         Entity screen_state_entity = registry.screenStates.entities[0];
-		registry.lightUps.emplace(screen_state_entity);
+        registry.lightUps.emplace(screen_state_entity);
 
         Motion &motion = registry.motions.get(player);
         motion.velocity = vec2(0, 0);
@@ -530,10 +537,11 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
     Entity screen_state_entity = registry.screenStates.entities[0];
     if (registry.lightUps.has(screen_state_entity))
     {
-        LightUp& lightUp = registry.lightUps.get(screen_state_entity);
+        LightUp &lightUp = registry.lightUps.get(screen_state_entity);
         lightUp.timer -= elapsed_ms_since_last_update / 1000.f;
-        
-        if (lightUp.timer < 0) {
+
+        if (lightUp.timer < 0)
+        {
             registry.lightUps.remove(screen_state_entity);
 
             printf("NEXT LEVEL");
@@ -556,7 +564,7 @@ bool WorldSystem::step(float elapsed_ms_since_last_update)
             currLevelStruct->enemy_spawn_time = levelStruct->enemy_spawn_time;
             currLevels.currStruct = currLevelStruct;
             restart_game();
-        return true;
+            return true;
         }
     }
 
@@ -640,15 +648,27 @@ void WorldSystem::restart_game()
             registry.remove_all_components_of(e);
         }
     }
+    for (Entity &e : registry.enemyMotions.entities)
+    {
+        registry.remove_all_components_of(e);
+    }
+    for (Entity &e : registry.projectileMotions.entities)
+    {
+        registry.remove_all_components_of(e);
+    }
+    for (Entity &e : registry.wallMotions.entities)
+    {
+        registry.remove_all_components_of(e);
+    }
 
     // Debugging for memory/component leaks
     registry.list_all_components();
-    
+
     // Clear map grid
     registry.gridMaps.clear();
     GenerateMap(renderer, uniform_dist(rng) * INT32_MAX);
     // create a new player
-    createPlayer(renderer, {30, window_height_px});
+    createPlayer(renderer, {50, window_height_px});
     init_values();
     registry.colors.insert(player, {1, 0.8f, 0.8f});
     update_player_move_dir();
@@ -704,7 +724,15 @@ void WorldSystem::projectile_hit_character(Entity laser, Entity character)
             scale = 0.87f;
         }
 
-        vec2 characterPos = registry.motions.get(character).position;
+        vec2 characterPos;
+        if (is_character_player)
+        {
+            characterPos = registry.motions.get(character).position;
+        }
+        else
+        {
+            characterPos = registry.enemyMotions.get(character).position;
+        }
         vec2 updatedPosition = renderer->calculatePosInCamera(characterPos);
         createText(renderer, "-" + std::to_string(damage), updatedPosition, scale, color);
         health_check(health, character);
@@ -769,7 +797,15 @@ void WorldSystem::handle_collisions(float elapsed_ms)
             if (registry.enemies.has(entity_other) || registry.walls.has(entity_other))
             {
                 Motion &playerMotion = registry.motions.get(entity);
-                Motion &wallMotion = registry.motions.get(entity_other);
+                Motion wallMotion;
+                if (registry.enemies.has(entity_other))
+                {
+                    wallMotion = registry.enemyMotions.get(entity_other);
+                }
+                else
+                {
+                    wallMotion = registry.wallMotions.get(entity_other);
+                }
 
                 vec2 diff = playerMotion.position - wallMotion.position;
                 vec2 wallNorm;
@@ -850,9 +886,9 @@ void WorldSystem::handle_collisions(float elapsed_ms)
             }
             else
             {
-                Motion &projMotion = registry.motions.get(entity);
-                Motion &wallMotion = registry.motions.get(entity_other);
-                Motion &prevWallMotion = registry.motions.get(handled_bullets[entity].second);
+                Motion &projMotion = registry.projectileMotions.get(entity);
+                Motion &wallMotion = registry.wallMotions.get(entity_other);
+                Motion &prevWallMotion = registry.wallMotions.get(handled_bullets[entity].second);
 
                 float prevDiff = distance(projMotion.position, prevWallMotion.position);
                 float currDiff = distance(projMotion.position, wallMotion.position);
@@ -870,11 +906,11 @@ void WorldSystem::handle_collisions(float elapsed_ms)
         {
             if (registry.walls.has(entity_other))
             {
-                if (registry.motions.has(entity))
+                if (registry.enemyMotions.has(entity))
                 {
 
-                    Motion &enemyMotion = registry.motions.get(entity);
-                    Motion &wallMotion = registry.motions.get(entity_other);
+                    Motion &enemyMotion = registry.enemyMotions.get(entity);
+                    Motion &wallMotion = registry.wallMotions.get(entity_other);
 
                     vec2 diff = enemyMotion.position - wallMotion.position;
                     vec2 wallNorm;
@@ -963,8 +999,8 @@ void WorldSystem::handle_collisions(float elapsed_ms)
             registry.renderRequests.get(entity).used_texture = id;
         }
 
-        Motion &projMotion = registry.motions.get(entity);
-        Motion &wallMotion = registry.motions.get(entity_other);
+        Motion &projMotion = registry.projectileMotions.get(entity);
+        Motion &wallMotion = registry.wallMotions.get(entity_other);
         vec2 normal;
 
         // chooses which wall normal to reflect off of based on projectile collision direction
@@ -1165,7 +1201,7 @@ void WorldSystem::on_mouse_move(vec2 mouse_position)
     {
         if (registry.deathTimers.has(player))
             return;
-        
+
         Entity screen_state_entity = registry.screenStates.entities[0];
         if (registry.lightUps.has(screen_state_entity))
             return;
