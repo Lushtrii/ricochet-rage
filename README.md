@@ -8,6 +8,6 @@ Polygon Triangulation Library: https://github.com/mapbox/earcut.hpp
 
 Shadows implementation inspired by: https://ncase.me/sight-and-light/
 
-Background image: https://wallpapercave.com/pixel-space-wallpapers
+Background image: https://wallpapercave.com/w/wp7872562
 
 Floor texture: https://piiixl.itch.io/textures3
