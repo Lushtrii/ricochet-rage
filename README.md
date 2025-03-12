@@ -1,3 +1,7 @@
+## Demo
+
+![Game Demo](assets/demo.gif)
+
 Credits:
 
 Title font: https://www.fontspace.com/megamax-jonathan-too-font-f124011
